@@ -1,0 +1,17 @@
+[package]
+name = "mikan-script"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+core_affinity = "0.8.3"
+rustc-hash = "2.1.1"
+
+[profile.release]
+# 高速化・デバッグ最小化設定
+opt-level = 3           # 最高速最適化
+lto = true              # Link Time Optimization
+codegen-units = 1       # 単一ユニットで最適化
+debug = false           # デバッグ情報を生成しない
+strip = "symbols"       # シンボル情報を除去
+panic = "abort"         # パニック時即終了（ランタイムコスト減）
