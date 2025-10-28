@@ -24,7 +24,7 @@ impl VMPool {
         }
     }
 
-    pub fn push_and_run_threaded(&mut self, vm: VM, function: usize, use_core_affinity: bool) {
+    pub fn push_and_run_threaded(&mut self, vm: VM, use_core_affinity: bool) {
         let vm_arc = Arc::new(RwLock::new(vm));
         self.vms.push(vm_arc.clone());
         let index = self.vms.len() - 1;
@@ -39,7 +39,7 @@ impl VMPool {
             }
             let mut vm = vm_arc.write().unwrap();
             vm.function_table = function_table;
-            vm.run_function(function);
+            vm.run_function();
         });
 
         self.handles.push(handle);
@@ -87,14 +87,9 @@ impl VM {
     }
 
     /// 指定の関数を実行します
-    #[inline(always)]
-    pub fn run_function(&mut self, index: usize) {
-        self.st.call_stack.push(index);
-        self.st.now_call_index = *self.st.call_stack.last().unwrap_or_else(|| {
-            std::process::exit(1);
-        });
+    pub fn run_function(&mut self) {
         loop {
-            let func = &self.function_table[index];
+            let func = &self.function_table[self.st.now_call_index];
             let ins = &func.instructions[self.st.pc];
             (ins.f)(self, ins.a, ins.b);
         }

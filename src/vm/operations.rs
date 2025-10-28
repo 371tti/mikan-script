@@ -859,7 +859,8 @@ impl Operations {
     /// call func_index
     /// set pc ( 普通は関数先頭アドレスで0 )
     pub fn call(vm: &mut VM, func_index: u64, pc: u64) {
-        vm.st.call_stack.push(func_index as usize);
+        vm.st.call_stack.push(vm.st.pc);
+        vm.st.call_stack.push(vm.st.now_call_index);
         vm.st.pc = pc as usize;
         vm.st.now_call_index = func_index as usize;
     }
@@ -867,11 +868,8 @@ impl Operations {
     /// 関数リターン
     /// ret
     pub fn ret(vm: &mut VM, _: u64, _: u64) {
-        vm.st.pc = 0;
-        vm.st.call_stack.pop().unwrap();
-        vm.st.now_call_index = *vm.st.call_stack.last().unwrap_or_else(|| {
-            std::process::exit(1);
-        })
+        vm.st.now_call_index = vm.st.call_stack.pop().expect("Call stack underflow on return");
+        vm.st.pc = vm.st.call_stack.pop().unwrap() + 1;
     }
 }
 
