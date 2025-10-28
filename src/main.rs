@@ -22,7 +22,6 @@ RET
     let functions = decoder.decode(source).expect("decode succeeds");
     pool.code_manager.functions.write().unwrap().extend(functions);
     let vm = VM::new();
-    pool.code_manager.set_test2();
     pool.push_and_run_threaded(vm,false);
     pool.wait_all();
 }
