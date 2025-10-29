@@ -1,49 +1,44 @@
-use std::sync::RwLock;
+use std::{path::PathBuf, sync::RwLock};
 
-use crate::vm::{operations::Operations, Function, FunctionPtr, Instruction};
+use rustc_hash::FxHashMap;
+
+use crate::vm::{Function, FunctionPtr, pre_decoder::PreDecoder};
 
 pub struct CodeManager {
-    pub functions: RwLock<Vec<Function>>,
+    pub latest_function_table: RwLock<Vec<FunctionPtr>>,
+    // 所有権保持実態 削除禁止
+    pub owned_functions: RwLock<Vec<Function>>, 
+    /// 遅延ロードを実現するためにbytecodeのfunction id を置き換えます。
+    /// index = decode_id
+    pub waiting_decode_functions: RwLock<Vec<UnDecodedFunction>>,
+    pub decoder: PreDecoder,
 }
+
+type ByteCodeID = u64;
 
 impl CodeManager {
     pub fn new() -> Self {
-        let functions = RwLock::new(Vec::new());
-        CodeManager { functions }
+        let latest_function_table = RwLock::new(Vec::new());
+        CodeManager { latest_function_table, owned_functions: RwLock::new(Vec::new()), waiting_decode_functions: RwLock::new(Vec::new()), decoder: PreDecoder::new() }
+    }
+
+    pub fn decode_request(&mut self, func_id: u64) {
+        
     }
 
     pub fn get_decoded(&self) -> Box<[FunctionPtr]> {
-        self.functions.read().unwrap().iter()
-            .map(|f| f.pinned_ptr())
-            .collect::<Vec<_>>()
-            .into_boxed_slice()
+        self.latest_function_table.read().unwrap().to_vec().into_boxed_slice()
     }
 
-    pub fn get_decode(&self, _func_id: u64, _deep: u64) -> Box<[FunctionPtr]> {
+    pub fn get_decode(&self, _func_id: u64, _decode_id: u64, _deep: u64, ) -> Box<[FunctionPtr]> {
         unimplemented!()
     }
+}
 
-    pub fn set_test(&self) {
-        self.functions.write().unwrap().push(Function::new(Box::new([
-            Instruction::new(Operations::load_u64_immediate, 2, 1000000000),
-            Instruction::new(Operations::add_u64_immediate, 1, 1),
-            Instruction::new(Operations::lt_u64_jump, 0x000102, 1),
-            Instruction::new(Operations::print_u64, 1, 0),
-            Instruction::new(Operations::exit, 0, 0),
-        ])));
-    }
-
-    pub fn set_test2(&self) {
-        self.functions.write().unwrap().push(Function::new(Box::new([
-            Instruction::new(Operations::alloc, 3, 8),
-            Instruction::new(Operations::add_u64_immediate, 1, 1),
-            Instruction::new(Operations::load_u64_immediate, 2, 1000000000),
-            Instruction::new(Operations::store_u64, 0x00030000, 0),
-            Instruction::new(Operations::atomic_add_u64, 0x08030001, 0),
-            Instruction::new(Operations::atomic_load_u64, 0x00030004, 0),
-            Instruction::new(Operations::lt_u64_jump, 0x000402, 4),
-            Instruction::new(Operations::print_u64, 4, 0),
-            Instruction::new(Operations::exit, 0, 0),
-        ])));
-    }
+pub struct UnDecodedFunction {
+    is_decoded: bool,
+    // 差し替えfunctionの所有
+    replacement_function: FunctionPtr,
+    // バイトコードのソースパス
+    source_path: PathBuf,
 }

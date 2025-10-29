@@ -59,6 +59,7 @@ pub struct VM {
     pub cm: Arc<CodeManager>,
 }
 
+#[derive(Clone, Copy)]
 pub struct FunctionPtr(*const Function);
 
 impl Deref for FunctionPtr {

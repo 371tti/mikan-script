@@ -765,9 +765,6 @@ ATOMIC_LOAD_U64 r3 r0 r4
 LT_U64_JUMP r0 r4 r2 4
 PRINT_U64 r4
 EXIT 0
-
-FUNC1
-RET
 "#;
 
         let decoder = PreDecoder::new();

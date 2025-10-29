@@ -1779,14 +1779,9 @@ impl Operations {
 impl Operations {
     /// LocalDecodedByteCodeの更新
     /// 呼び出された場合CodeManagerにデコードを依頼し、VMのFuctionTableを更新します
-    /// たとえばまだデコードされてない呼び出し先関数をこれに置き換えることで遅延デコードを実現します
-    pub fn get_decode(vm: &mut VM, fn_r: u64, deepr: u64) {
-        unsafe {
-            let r = vm.st.r.as_mut_ptr();
-            let func_id = *r.add(fn_r as usize);
-            let deep = *r.add(deepr as usize);
-            vm.function_table = vm.cm.get_decode(func_id, deep);
-        }
+    /// Code Manager は未デコードのfunctionをこれに置き換えます。
+    pub fn get_decode(vm: &mut VM, decode_id: u64, deep: u64) {
+        vm.function_table = vm.cm.get_decode(decode_id, vm.st.now_call_index as u64, deep);
         vm.st.pc += 1; // fallthrough
     }
 
