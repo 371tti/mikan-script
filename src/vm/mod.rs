@@ -60,7 +60,7 @@ pub struct VM {
 }
 
 #[derive(Clone, Copy)]
-pub struct FunctionPtr(*const Function);
+pub struct FunctionPtr(pub *const Function);
 
 impl Deref for FunctionPtr {
     type Target = Function;

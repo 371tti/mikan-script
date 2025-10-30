@@ -16,7 +16,7 @@ RET
 "#;
     let decoder = PreDecoder::new();
     let functions = decoder.decode(source).expect("decode succeeds");
-    pool.code_manager.functions.write().unwrap().extend(functions);
+    pool.code_manager.latest_function_table.write().unwrap().extend(functions.into_iter().map(|f| mikan_script::vm::FunctionPtr(Box::into_raw(Box::new(f)))));
     let vm = VM::new();
     pool.push_and_run_threaded(vm,false);
     pool.wait_all();
