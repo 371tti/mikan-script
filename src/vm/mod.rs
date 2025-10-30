@@ -24,10 +24,11 @@ impl VMPool {
         }
     }
 
-    pub fn push_and_run_threaded(&mut self, vm: VM, use_core_affinity: bool) {
+    pub fn push_and_run_threaded(&mut self, mut vm: VM, use_core_affinity: bool) {
+        let index = self.vms.len();
+        vm.vm_id = index as u64;
         let vm_arc = Arc::new(RwLock::new(vm));
         self.vms.push(vm_arc.clone());
-        let index = self.vms.len() - 1;
         let function_table = self.code_manager.get_decoded();
 
         let handle = thread::spawn(move || {
@@ -57,6 +58,7 @@ pub struct VM {
     pub st: VMState,
     pub function_table: Box<[FunctionPtr]>,
     pub cm: Arc<CodeManager>,
+    pub vm_id: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -80,6 +82,7 @@ impl VM {
             st: VMState::new(),
             function_table: Box::new([]),
             cm: Arc::new(CodeManager::new()),
+            vm_id: 0,
         }
     }
 
