@@ -46,110 +46,81 @@ impl VM {
         // コードマネージャから関数テーブルを取得
         self.function_table = self.cm.get_decoded();
 
+        self.st.now_function_ptr = self.function_table[self.st.now_call_index];
         // ループ-アンローリング(/・ω・)/ www (パフォーマンス10%向上確認済み)
         loop {
             if self.st.state_flag & state_flag::PAUSE != 0 {
                 break;
             }
             self.st.state_flag = 0;
-            self.st.now_function_ptr = self.function_table[self.st.now_call_index];
             loop {
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 { break; }
+                if self.st.state_flag != 0 {
+                    break;
+                }
             }
         }
     }
