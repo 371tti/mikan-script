@@ -4,14 +4,9 @@ use std::{
     ptr::NonNull,
 };
 
-
-/// キャッシュサイズ
-/// !!! 2^n しか許可しません
-pub const HEEP_PTR_CACHE_SIZE: usize = 16;
-
 pub struct Memory {
     pub data: Vec<Heep>,
-    pub reuse_list: Vec<u64>,
+    pub reuse_list: Vec<usize>,
 }
 
 impl Memory {
@@ -28,7 +23,7 @@ impl Memory {
         if let Some(id) = self.reuse_list.pop() {
             let heep = &mut self.data[id as usize];
             heep.alloc(size);
-            return id;
+            return id as u64;
         } else {
             let id = self.data.len() as u64;
             let heep = Heep::new(size);
@@ -50,16 +45,7 @@ impl Memory {
     pub fn dealloc_heep(&mut self, id: u64) {
         if let Some(heep) = self.data.get_mut(id as usize) {
             heep.dealloc();
-            self.reuse_list.push(id);
-        } else {
-            std::process::exit(-9998);
-        }
-    }
-
-    #[inline(always)]
-    pub fn heep(&self, id: u64) -> &Heep {
-        if let Some(heep) = self.data.get(id as usize) {
-            heep
+            self.reuse_list.push(id as usize);
         } else {
             std::process::exit(-9998);
         }
