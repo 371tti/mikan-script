@@ -1937,7 +1937,6 @@ impl Operations {
     }
 
     /// 最新のデコード済みByteCodeを取得
-    #[unsafe(link_section = ".text.hot")]
     #[inline(always)]
     pub fn get_decoded(vm: &mut VM, _:u64, _: u64) {
         vm.function_table = vm.cm.get_decoded();
