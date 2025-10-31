@@ -1,32 +1,50 @@
-use std::sync::Arc;
+use std::path::PathBuf;
 
 use crate::vm::{code_manager::CodeManager, function::FunctionPtr, memory::Memory};
 
 /// Direct-threaded VM
+/// 関数ポインタ配列から命令を実行し続ける状態機械
+///
 pub struct VM {
+    /// VMの状態
     pub st: VMState,
+    /// 関数テーブル
     pub function_table: Box<[FunctionPtr]>,
-    pub cm: Arc<CodeManager>,
+    /// コードマネージャ
+    pub cm: CodeManager,
+    /// VMのID
     pub vm_id: u64,
 }
 
-/// Direct-threaded VM ですてすてす
 impl VM {
     pub fn new() -> Self {
         VM {
             st: VMState::new(),
             function_table: Box::new([]),
-            cm: Arc::new(CodeManager::new("none".into())),
+            cm: CodeManager::new("none".into()),
             vm_id: 0,
         }
     }
 
-    pub fn replace_code_manager(&mut self, cm: Arc<CodeManager>) {
+    /// バイトコードのパスを設定します
+    pub fn set_path(&mut self, path: String) {
+        self.cm = CodeManager::new(PathBuf::from(path));
+    }
+
+    /// コードマネージャを差し替えます
+    pub fn replace_code_manager(&mut self, cm: CodeManager) {
         self.cm = cm;
     }
 
+    /// メモリを差し替えます
+    pub fn replace_memory(&mut self, mem: Memory) {
+        self.st.mem = mem;
+    }
+
     /// 指定の関数を実行します
-    pub fn run_function(&mut self) {
+    pub fn run(&mut self) {
+        // コードマネージャから関数テーブルを取得
+        self.function_table = self.cm.get_decoded();
         loop {
             let func = &self.function_table[self.st.now_call_index];
             let ins = &func.instructions[self.st.pc];

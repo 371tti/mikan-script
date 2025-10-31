@@ -1,10 +1,36 @@
-use std::{path::PathBuf, sync::RwLock};
+use std::{ops::Deref, path::PathBuf, sync::{Arc, RwLock}};
 
 use rustc_hash::FxHashMap;
 
 use crate::vm::{function::{Function, FunctionPtr}, pre_decoder::PreDecoder};
 
 pub struct CodeManager {
+    inner: Arc<CodeManagerInner>,
+}
+
+impl CodeManager {
+    pub fn new(root_dir: PathBuf) -> Self {
+        CodeManager {
+            inner: Arc::new(CodeManagerInner::new(root_dir)),
+        }
+    }
+
+    pub fn clone_shared(&self) -> CodeManager {
+        CodeManager {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl Deref for CodeManager {
+    type Target = CodeManagerInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+pub struct CodeManagerInner {
     /// 最新の関数テーブル
     /// 初期でMainとその差し替え関数のみが入ってるとしておく
     pub latest_function_table: RwLock<Vec<FunctionPtr>>,
@@ -23,10 +49,10 @@ pub struct CodeManager {
 
 type FunctionPath = String;
 
-impl CodeManager {
+impl CodeManagerInner {
     pub fn new(root_dir: PathBuf) -> Self {
         let latest_function_table = RwLock::new(Vec::new());
-        CodeManager { 
+        CodeManagerInner { 
             latest_function_table, 
             owned_functions: RwLock::new(Vec::new()), 
             functions: RwLock::new(FxHashMap::default()), 
@@ -47,11 +73,7 @@ impl CodeManager {
             latest_function_table.push(FunctionPtr(Box::into_raw(Box::new(f.clone()))));
         });
     }
-
-    pub fn decode_request(&mut self, func_id: u64) {
-        
-    }
-
+    
     pub fn get_decoded(&self) -> Box<[FunctionPtr]> {
         self.latest_function_table.read().unwrap().to_vec().into_boxed_slice()
     }

@@ -14,7 +14,7 @@ pub mod function;
 pub struct VMPool {
     pub vms: Vec<Arc<RwLock<VM>>>,
     handles: Vec<JoinHandle<()>>,
-    pub code_manager: Arc<CodeManager>,
+    pub code_manager: CodeManager,
 }
 
 impl VMPool {
@@ -22,20 +22,25 @@ impl VMPool {
         VMPool {
             vms: Vec::new(),
             handles: Vec::new(),
-            code_manager: Arc::new(CodeManager::new("none".into())),
+            code_manager: CodeManager::new("none".into()),
         }
     }
 
     pub fn set_path(&mut self, path: String) {
-        self.code_manager = Arc::new(CodeManager::new(PathBuf::from(path)));
+        self.code_manager = CodeManager::new(PathBuf::from(path));
+    }
+
+    pub fn run(&mut self) {
+        let vm = VM::new();
+        self.push_and_run_threaded(vm,false);
     }
 
     pub fn push_and_run_threaded(&mut self, mut vm: VM, use_core_affinity: bool) {
         let index = self.vms.len();
         vm.vm_id = index as u64;
+        vm.cm = self.code_manager.clone_shared();
         let vm_arc = Arc::new(RwLock::new(vm));
         self.vms.push(vm_arc.clone());
-        let function_table = self.code_manager.get_decoded();
 
         let handle = thread::spawn(move || {
             if use_core_affinity {
@@ -45,8 +50,7 @@ impl VMPool {
                 }
             }
             let mut vm = vm_arc.write().unwrap();
-            vm.function_table = function_table;
-            vm.run_function();
+            vm.run();
         });
 
         self.handles.push(handle);
