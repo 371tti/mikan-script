@@ -16,10 +16,3 @@ codegen-units = 1       # 単一ユニットで最適化
 debug = false           # デバッグ情報を生成しない
 strip = "symbols"       # シンボル情報を除去
 panic = "abort"         # パニック時即終了（ランタイムコスト減）
-
-[profile.bench]
-# Criterion実行時はpanicをunwindに（パニック捕捉のため）
-panic = "unwind"
-
-[dev-dependencies]
-criterion = "0.7.0"

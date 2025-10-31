@@ -52,102 +52,102 @@ impl VM {
                 break;
             }
             self.st.state_flag = 0;
-            let func = self.function_table[self.st.now_call_index];
+            self.st.now_function_ptr = self.function_table[self.st.now_call_index];
             loop {
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
-                let ins = &func.instructions[self.st.pc];
+                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 if self.st.state_flag != 0 { break; }
             }
@@ -167,6 +167,7 @@ pub struct VMState {
     /// 現在の関数インデックスを保持する
     pub call_stack: Vec<usize>,
     pub mem: Memory,
+    pub now_function_ptr: FunctionPtr,
     pub pc: usize,
     pub now_call_index: usize,
 
@@ -182,6 +183,7 @@ impl VMState {
         VMState {
             r,
             mem: Memory::new(),
+            now_function_ptr: FunctionPtr(std::ptr::null()),
             pc: 0,
             call_stack: Vec::new(),
             now_call_index: 0,

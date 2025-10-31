@@ -43,6 +43,8 @@ impl Operations {
             *r.add(dst as usize) = (*r.add(dst as usize)).wrapping_add(imm);
         }
         vm.st.pc += 1; // fallthrough
+        let ins = &vm.st.now_function_ptr.instructions[vm.st.pc];
+        return (ins.f)(vm, ins.a, ins.b);
     }
 
     /// 64bit符号付き整数加算
@@ -954,6 +956,7 @@ impl Operations {
         vm.st.pc = pc as usize;
         vm.st.now_call_index = func_index as usize;
         vm.st.state_flag |= state_flag::IN_CALL;
+        
     }
 
     /// 関数リターン
