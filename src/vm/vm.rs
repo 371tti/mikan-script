@@ -45,10 +45,112 @@ impl VM {
     pub fn run(&mut self) {
         // コードマネージャから関数テーブルを取得
         self.function_table = self.cm.get_decoded();
+
+        // ループ-アンローリング(/・ω・)/ www (パフォーマンス10%向上確認済み)
         loop {
-            let func = &self.function_table[self.st.now_call_index];
-            let ins = &func.instructions[self.st.pc];
-            (ins.f)(self, ins.a, ins.b);
+            if self.st.state_flag & state_flag::PAUSE != 0 {
+                break;
+            }
+            self.st.state_flag = 0;
+            let func = self.function_table[self.st.now_call_index];
+            loop {
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+                let ins = &func.instructions[self.st.pc];
+                (ins.f)(self, ins.a, ins.b);
+                if self.st.state_flag != 0 { break; }
+            }
         }
     }
 }
@@ -61,12 +163,16 @@ pub struct VMState {
     /// r254 : ゴミ箱レジスタ
     /// r255 : 0xFFFFFF 固定値レジスタ
     pub r: [u64; 256],
-    pub mem: Memory,
-    pub pc: usize,
     /// 呼び出しスタック
     /// 現在の関数インデックスを保持する
     pub call_stack: Vec<usize>,
+    pub mem: Memory,
+    pub pc: usize,
     pub now_call_index: usize,
+
+    /// 1 << 0 : 停止フラグ
+    /// 1 << 1 : コールサイクルフラグ
+    pub state_flag: u8,
 }
 
 impl VMState {
@@ -79,6 +185,13 @@ impl VMState {
             pc: 0,
             call_stack: Vec::new(),
             now_call_index: 0,
+
+            state_flag: 0,
         }
     }
+}
+
+pub mod state_flag {
+    pub const PAUSE: u8 = 0b0000_0001;
+    pub const IN_CALL: u8 = 0b0000_0010;
 }

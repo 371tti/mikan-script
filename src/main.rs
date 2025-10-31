@@ -1,4 +1,4 @@
-use mikan_script::vm::{VMPool, pre_decoder::PreDecoder, vm::VM};
+use mikan_script::vm::{VMPool, pre_decoder::PreDecoder};
 
 fn main() {
     let mut pool = VMPool::new();
@@ -17,7 +17,6 @@ RET
     let decoder = PreDecoder::new();
     let functions = decoder.decode(source).expect("decode succeeds");
     pool.code_manager.set_functions(functions);
-    let vm = VM::new();
-    pool.push_and_run_threaded(vm,false);
+    pool.run();
     pool.wait_all();
 }

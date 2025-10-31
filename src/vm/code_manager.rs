@@ -84,11 +84,11 @@ impl CodeManagerInner {
 }
 
 pub struct UnDecodedFunction {
-    is_decoded: bool,
+    pub is_decoded: bool,
     /// 未割当ならMAXで
-    table_index: usize,
+    pub table_index: usize,
     /// 差し替えfunction
-    replacement_function: FunctionPtr,
+    pub replacement_function: FunctionPtr,
     /// バイトコードのソースパス
-    source_path: PathBuf,
+    pub source_path: PathBuf,
 }

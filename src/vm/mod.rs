@@ -35,6 +35,11 @@ impl VMPool {
         self.push_and_run_threaded(vm,false);
     }
 
+    pub fn run_with_core_affinity(&mut self) {
+        let vm = VM::new();
+        self.push_and_run_threaded(vm,true);
+    }
+
     pub fn push_and_run_threaded(&mut self, mut vm: VM, use_core_affinity: bool) {
         let index = self.vms.len();
         vm.vm_id = index as u64;
