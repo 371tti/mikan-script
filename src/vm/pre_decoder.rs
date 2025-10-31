@@ -2,7 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::OnceLock;
 
-use super::{Function, Instruction, Op, operations::Operations};
+use crate::vm::function::Function;
+use crate::vm::operations::Instruction;
+
+use super::{operations::{Operations, Op}};
 
 /// 事前デコーダ
 /// バイトコードをfunction_ptr_vecに変換する

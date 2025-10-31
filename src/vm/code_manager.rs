@@ -2,27 +2,50 @@ use std::{path::PathBuf, sync::RwLock};
 
 use rustc_hash::FxHashMap;
 
-use crate::vm::{Function, FunctionPtr, pre_decoder::PreDecoder};
+use crate::vm::{function::{Function, FunctionPtr}, pre_decoder::PreDecoder};
 
 pub struct CodeManager {
+    /// 最新の関数テーブル
+    /// 初期でMainとその差し替え関数のみが入ってるとしておく
     pub latest_function_table: RwLock<Vec<FunctionPtr>>,
     /// 所有権保持実態 RUST安全外
     /// 削除禁止
     pub owned_functions: RwLock<Vec<Function>>,
     /// 遅延ロードを実現するためにbytecodeのfunction id を置き換えます。
     /// index = decode_id
-    pub waiting_decode_functions: RwLock<FxHashMap<DecodeId, UnDecodedFunction>>,
+    /// 関数ぜんぶここになげこんで、MAINから再帰的にパースしていく感じ？
+    /// 再帰のためのバッファは処理系に投げとくか
+    pub functions: RwLock<FxHashMap<FunctionPath, UnDecodedFunction>>,
     pub decoder: PreDecoder,
+    /// MAINあるやつ
+    pub root_dir: PathBuf,
 }
 
-type FunctionId = u64;
-
-type DecodeId = u64;
+type FunctionPath = String;
 
 impl CodeManager {
-    pub fn new() -> Self {
+    pub fn new(root_dir: PathBuf) -> Self {
         let latest_function_table = RwLock::new(Vec::new());
-        CodeManager { latest_function_table, owned_functions: RwLock::new(Vec::new()), waiting_decode_functions: RwLock::new(FxHashMap::default()), decoder: PreDecoder::new() }
+        CodeManager { 
+            latest_function_table, 
+            owned_functions: RwLock::new(Vec::new()), 
+            functions: RwLock::new(FxHashMap::default()), 
+            decoder: PreDecoder::new(),
+            root_dir,
+        }
+    }
+
+    pub fn set_functions(&self, functions: Vec<Function>) {
+        let mut owned_functions = self.owned_functions.write().unwrap();
+        for func in functions {
+            owned_functions.push(func);
+        }
+        drop(owned_functions);
+        let owned_functions = self.owned_functions.read().unwrap();
+        let mut latest_function_table = self.latest_function_table.write().unwrap();
+        owned_functions.iter().for_each(|f| {
+            latest_function_table.push(FunctionPtr(Box::into_raw(Box::new(f.clone()))));
+        });
     }
 
     pub fn decode_request(&mut self, func_id: u64) {
@@ -40,13 +63,10 @@ impl CodeManager {
 
 pub struct UnDecodedFunction {
     is_decoded: bool,
-    // 差し替えfunction
+    /// 未割当ならMAXで
+    table_index: usize,
+    /// 差し替えfunction
     replacement_function: FunctionPtr,
-    // バイトコードのソースパス
+    /// バイトコードのソースパス
     source_path: PathBuf,
 }
-
-// main読み込み 遅延ロードとして
-// 読み込み済み functionが呼び出すcall のfunction_id はすべて読み込み済みでマッピングされているか 遅延ロード用のfunctionに置き換えられている必要がある
-// 遅延ロード用のfunctionは 作成時、 owned_functionsにいれておき、 waiting_decode_functionsで参照カウントで管理しながら入れる
-// 遅延ロードが行われたとき waiting_decode_functionsからデコードし、 owned_functionsに追加、 latest_function_tableを書き換える ref_countが0になったらowned_functionsとwaiting_decode_functionsから削除する
