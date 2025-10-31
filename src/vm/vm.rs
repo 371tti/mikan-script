@@ -47,13 +47,15 @@ impl VM {
         self.function_table = self.cm.get_decoded();
 
         self.st.now_function_ptr = self.function_table[self.st.now_call_index];
-        // ループ-アンローリング(/・ω・)/ www (パフォーマンス10%向上確認済み)
+        // ループ-アンローリング(/・ω・)/
         loop {
             if self.st.state_flag & state_flag::PAUSE != 0 {
                 break;
             }
             self.st.state_flag = 0;
-            loop {
+
+            while self.st.state_flag == 0 {
+                // アンローリング x16
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
@@ -86,41 +88,6 @@ impl VM {
                 (ins.f)(self, ins.a, ins.b);
                 let ins = &self.st.now_function_ptr.instructions[self.st.pc];
                 (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                if self.st.state_flag != 0 {
-                    break;
-                }
             }
         }
     }
@@ -166,5 +133,5 @@ impl VMState {
 
 pub mod state_flag {
     pub const PAUSE: u8 = 0b0000_0001;
-    pub const IN_CALL: u8 = 0b0000_0010;
+    // pub const IN_CALL: u8 = 0b0000_0010;
 }

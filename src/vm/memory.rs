@@ -4,91 +4,43 @@ use std::{
     ptr::NonNull,
 };
 
-use rustc_hash::FxHashMap;
 
 /// キャッシュサイズ
 /// !!! 2^n しか許可しません
 pub const HEEP_PTR_CACHE_SIZE: usize = 16;
 
 pub struct Memory {
-    pub data: FxHashMap<u64, Heep>,
-    pub counter: u64,
-    cache_ids: [u64; HEEP_PTR_CACHE_SIZE],
-    cache_ptrs: [usize; HEEP_PTR_CACHE_SIZE],
-    cache_rotate_index: usize,
+    pub data: Vec<Heep>,
+    pub reuse_list: Vec<u64>,
 }
 
 impl Memory {
     pub fn new() -> Self {
         Memory {
-            data: FxHashMap::default(),
-            counter: 0,
-            // 無効なエントリとして u64::MAX を使う
-            // 単カウントでMAXに到達することがないと考えられるため安全
-            cache_ids: [u64::MAX; HEEP_PTR_CACHE_SIZE],
-            cache_ptrs: [0usize; HEEP_PTR_CACHE_SIZE],
-            // 下位4bitだけきりおとしてindexにする
-            cache_rotate_index: 0,
-        }
-    }
-
-    #[inline(always)]
-    fn cache_push_front(&mut self, id: u64, ptr: usize) {
-        self.cache_rotate_index = self.cache_rotate_index.wrapping_sub(1);
-        let cache_index = self.cache_rotate_index as usize & (HEEP_PTR_CACHE_SIZE - 1);
-        self.cache_ids[cache_index] = id;
-        self.cache_ptrs[cache_index] = ptr;
-    }
-
-    #[inline(always)]
-    fn cache_search(&self, id: u64) -> Option<usize> {
-        let front_index = self.cache_rotate_index;
-        for i in front_index..front_index.wrapping_add(HEEP_PTR_CACHE_SIZE) {
-            let i = i & (HEEP_PTR_CACHE_SIZE - 1);
-            if self.cache_ids[i] == id {
-                return Some(self.cache_ptrs[i]);
-            }
-        }
-        None
-    }
-
-    #[inline(always)]
-    fn cache_entry_front(&mut self, id: u64, ptr: usize) {
-        if let Some(cache_index) = self.cache_search(id) {
-            self.cache_ptrs[cache_index] = ptr;
-        } else {
-            self.cache_push_front(id, ptr);
-        }
-    }
-
-    fn chache_remove(&mut self, id: u64) {
-        let front_index = self.cache_rotate_index;
-        for i in front_index..front_index.wrapping_add(HEEP_PTR_CACHE_SIZE) {
-            let i = i & (HEEP_PTR_CACHE_SIZE - 1);
-            if self.cache_ids[i] == id {
-                self.cache_ids[i] = u64::MAX;
-                return;
-            }
+            data: Vec::new(),
+            reuse_list: Vec::new(),
         }
     }
 
     /// 新しいHeepとそのid
     #[inline(always)]
     pub fn alloc_heep(&mut self, size: usize) -> u64 {
-        let heep = Heep::new(size);
-        let id = self.counter;
-        self.cache_push_front(id, heep.ptr());
-        self.data.insert(id, heep);
-        self.counter += 1;
-        id
+        if let Some(id) = self.reuse_list.pop() {
+            let heep = &mut self.data[id as usize];
+            heep.alloc(size);
+            return id;
+        } else {
+            let id = self.data.len() as u64;
+            let heep = Heep::new(size);
+            self.data.push(heep);
+            return id;
+        }
     }
 
     #[inline(always)]
     pub fn realloc_heep(&mut self, id: u64, new_size: usize) {
-        if let Some(heep) = self.data.get_mut(&id) {
+        if let Some(heep) = self.data.get_mut(id as usize) {
             heep.realloc(new_size);
-            let ptr = heep.ptr();
-            self.cache_entry_front(id, ptr);
         } else {
             std::process::exit(-9998);
         }
@@ -96,13 +48,17 @@ impl Memory {
 
     #[inline(always)]
     pub fn dealloc_heep(&mut self, id: u64) {
-        self.data.remove(&id);
-        self.chache_remove(id);
+        if let Some(heep) = self.data.get_mut(id as usize) {
+            heep.dealloc();
+            self.reuse_list.push(id);
+        } else {
+            std::process::exit(-9998);
+        }
     }
 
     #[inline(always)]
     pub fn heep(&self, id: u64) -> &Heep {
-        if let Some(heep) = self.data.get(&id) {
+        if let Some(heep) = self.data.get(id as usize) {
             heep
         } else {
             std::process::exit(-9998);
@@ -111,12 +67,8 @@ impl Memory {
 
     #[inline(always)]
     pub fn head_ptr(&mut self, id: u64) -> usize {
-        if let Some(ptr) = self.cache_search(id) {
-            return ptr;
-        }
-        if let Some(heep) = self.data.get(&id) {
+        if let Some(heep) = self.data.get(id as usize) {
             let ptr = heep.ptr();
-            self.cache_push_front(id, ptr);
             ptr
         } else {
             std::process::exit(-9998);
@@ -184,6 +136,17 @@ impl RawHeep {
     #[inline(always)]
     fn ptr(&self) -> *mut u8 {
         self.ptr.as_ptr()
+    }
+
+    #[inline(always)]
+    fn alloc(&mut self, size: usize) {
+        let layout = alloc::Layout::from_size_align(size, Self::ALIGN).unwrap();
+        let uncheck_ptr = unsafe { alloc::alloc(layout) };
+        if uncheck_ptr.is_null() {
+            oom();
+        }
+        self.ptr = unsafe { NonNull::new_unchecked(uncheck_ptr) };
+        self.size = size;
     }
 
     #[inline(always)]
