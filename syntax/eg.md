@@ -13,37 +13,29 @@ fn add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-state Sorted: FlagState {
-    
+state Sorted(bool)
+state Predicate {
+    expr_buf: String
 }
 
+// state は state を操作するためのブロックを配置します
+// satisfy の後にはbool を返す式が必要です。 式を満たす場合実装されます。
 impl Vec<T> 
-where Self: Sorted
+satisfy Self@Sorted.is_true()
 {
-    def bin_search = {
-
-    } state {}
-
-    def shuffle = {
-
+    pub fn shuffle(&mut self) {
+        //...
     } state {
-        Self@Sorted.not()
+        Self@Sorted.0 = false;
     }
 }
 
-state Max: NumState {
-    
-}
-
-state Min: NumSTate {
-    
-}
-
-impl i32 {
-    pub fn add(self: Self@Max@Min, other: i32@Max@Min) {
-
+impl i32 
+{
+    pub fn add(self: Self@Predicate, other: i32@Predicate) 
+    {
+        self += other
     } state {
-        Self@Max = a@Max + b@Max
-        Self@Min = a@Min + b@Min
+        self@Predicate += other@Predicate;
     }
 }
