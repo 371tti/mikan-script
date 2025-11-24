@@ -21,13 +21,14 @@ state Predicate {
 // state は state を操作するためのブロックを配置します
 // satisfy の後にはbool を返す式が必要です。 式を満たす場合実装されます。
 impl Vec<T> 
-satisfy Self@Sorted.is_true()
 {
     pub fn shuffle(&mut self) {
         //...
     } state {
         Self@Sorted.0 = false;
     }
+} satisfy {
+    Self@Sorted.is_true()
 }
 
 impl i32 
