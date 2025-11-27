@@ -54,40 +54,15 @@ impl VM {
             }
             self.st.state_flag = 0;
 
+            let ptr = self as *mut VM;
+
             while self.st.state_flag == 0 {
                 // アンローリング x16
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
+                unsafe {
+                    let ins = &self.st.now_function_ptr.instructions[self.st.pc];
+                    ins.run(&mut *ptr);
+
+                }
             }
         }
     }

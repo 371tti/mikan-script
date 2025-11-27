@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use crate::vm::function::Function;
 use crate::vm::operations::Instruction;
 
-use super::{operations::{Operations, Op}};
+type InstructionBuilder = fn(u64, u64) -> Instruction;
 
 /// 事前デコーダ
 /// バイトコードをfunction_ptr_vecに変換する
@@ -25,12 +25,12 @@ pub struct PreDecoder;
 
 #[derive(Copy, Clone)]
 struct OpcodeSpec {
-    handler: Op,
+    builder: InstructionBuilder,
     operands: &'static [OperandPlan],
 }
 impl OpcodeSpec {
-    const fn new(handler: Op, operands: &'static [OperandPlan]) -> Self {
-        Self { handler, operands }
+    const fn new(builder: InstructionBuilder, operands: &'static [OperandPlan]) -> Self {
+        Self { builder, operands }
     }
 
     fn min_tokens(self) -> usize {
@@ -214,16 +214,16 @@ impl PreDecoder {
                 args[idx] = arg;
             }
 
-            current
-                .as_mut()
-                .unwrap()
-                .instructions
-                .push(ParsedInstruction {
-                    opcode: opcode_name,
-                    handler: spec.handler,
-                    args,
-                    line: line_no,
-                });
+                current
+                    .as_mut()
+                    .unwrap()
+                    .instructions
+                    .push(ParsedInstruction {
+                        opcode: opcode_name,
+                        builder: spec.builder,
+                        args,
+                        line: line_no,
+                    });
         }
 
         if let Some(function) = current.take() {
@@ -535,7 +535,7 @@ impl ParsedFunction {
 #[derive(Clone)]
 struct ParsedInstruction {
     opcode: String,
-    handler: Op,
+    builder: InstructionBuilder,
     args: [Arg; 2],
     line: usize,
 }
@@ -547,7 +547,7 @@ impl ParsedInstruction {
     ) -> Result<Instruction, PreDecodeError> {
         let a = resolve_arg(&self.opcode, &self.args[0], name_to_index, self.line)?;
         let b = resolve_arg(&self.opcode, &self.args[1], name_to_index, self.line)?;
-        Ok(Instruction::new(self.handler, a, b))
+        Ok((self.builder)(a, b))
     }
 }
 
@@ -590,161 +590,161 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
     OPCODES.get_or_init(|| {
         let mut map: HashMap<&'static str, OpcodeSpec> = HashMap::new();
         macro_rules! insert {
-            ($name:literal, $func:expr, $operands:expr) => {
-                map.insert($name, OpcodeSpec::new($func as Op, $operands));
+            ($name:literal, $ctor:expr, $operands:expr) => {
+                map.insert($name, OpcodeSpec::new($ctor, $operands));
             };
         }
 
         // 整数演算
-        insert!("ADD_U64", Operations::add_u64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_U64_IMMEDIATE", Operations::add_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("ADD_I64", Operations::add_i64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_I64_IMMEDIATE", Operations::add_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("SUB_U64", Operations::sub_u64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_U64_IMMEDIATE", Operations::sub_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("SUB_I64", Operations::sub_i64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_I64_IMMEDIATE", Operations::sub_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("MUL_U64", Operations::mul_u64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_U64_IMMEDIATE", Operations::mul_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("MUL_I64", Operations::mul_i64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_I64_IMMEDIATE", Operations::mul_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("DIV_U64", Operations::div_u64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_U64_IMMEDIATE", Operations::div_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("DIV_I64", Operations::div_i64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_I64_IMMEDIATE", Operations::div_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("ABS", Operations::abs, OPERANDS_TWO_VALUES); // *dst = abs(*src)
-        insert!("MOD_I64", Operations::mod_i64, OPERANDS_TWO_VALUES); // *dst = *dst % *src
-        insert!("NEG_I64", Operations::neg_i64, OPERANDS_TWO_VALUES); // *dst = -(*src)
-        insert!("U64_TO_F64", Operations::u64_to_f64, OPERANDS_TWO_VALUES); // *dst = (*src as f64)
-        insert!("I64_TO_F64", Operations::i64_to_f64, OPERANDS_TWO_VALUES); // *dst = (*src as i64) as f64
+        insert!("ADD_U64", Instruction::AddU64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
+        insert!("ADD_U64_IMMEDIATE", Instruction::AddU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
+        insert!("ADD_I64", Instruction::AddI64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
+        insert!("ADD_I64_IMMEDIATE", Instruction::AddI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
+        insert!("SUB_U64", Instruction::SubU64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
+        insert!("SUB_U64_IMMEDIATE", Instruction::SubU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
+        insert!("SUB_I64", Instruction::SubI64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
+        insert!("SUB_I64_IMMEDIATE", Instruction::SubI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
+        insert!("MUL_U64", Instruction::MulU64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
+        insert!("MUL_U64_IMMEDIATE", Instruction::MulU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
+        insert!("MUL_I64", Instruction::MulI64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
+        insert!("MUL_I64_IMMEDIATE", Instruction::MulI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
+        insert!("DIV_U64", Instruction::DivU64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
+        insert!("DIV_U64_IMMEDIATE", Instruction::DivU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
+        insert!("DIV_I64", Instruction::DivI64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
+        insert!("DIV_I64_IMMEDIATE", Instruction::DivI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
+        insert!("ABS", Instruction::Abs, OPERANDS_TWO_VALUES); // *dst = abs(*src)
+        insert!("MOD_I64", Instruction::ModI64, OPERANDS_TWO_VALUES); // *dst = *dst % *src
+        insert!("NEG_I64", Instruction::NegI64, OPERANDS_TWO_VALUES); // *dst = -(*src)
+        insert!("U64_TO_F64", Instruction::U64ToF64, OPERANDS_TWO_VALUES); // *dst = (*src as f64)
+        insert!("I64_TO_F64", Instruction::I64ToF64, OPERANDS_TWO_VALUES); // *dst = (*src as i64) as f64
 
         // 浮動小数点演算
-        insert!("ADD_F64", Operations::add_f64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_F64_IMMEDIATE", Operations::add_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("SUB_F64", Operations::sub_f64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_F64_IMMEDIATE", Operations::sub_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("MUL_F64", Operations::mul_f64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_F64_IMMEDIATE", Operations::mul_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("DIV_F64", Operations::div_f64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_F64_IMMEDIATE", Operations::div_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("ABS_F64", Operations::abs_f64, OPERANDS_TWO_VALUES); // *dst = abs(*src)
-        insert!("NEG_F64", Operations::neg_f64, OPERANDS_TWO_VALUES); // *dst = -(*src)
-        insert!("TO_I64", Operations::to_i64, OPERANDS_TWO_VALUES); // *dst = (*src as f64) as i64 as u64
+        insert!("ADD_F64", Instruction::AddF64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
+        insert!("ADD_F64_IMMEDIATE", Instruction::AddF64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
+        insert!("SUB_F64", Instruction::SubF64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
+        insert!("SUB_F64_IMMEDIATE", Instruction::SubF64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
+        insert!("MUL_F64", Instruction::MulF64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
+        insert!("MUL_F64_IMMEDIATE", Instruction::MulF64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
+        insert!("DIV_F64", Instruction::DivF64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
+        insert!("DIV_F64_IMMEDIATE", Instruction::DivF64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
+        insert!("ABS_F64", Instruction::AbsF64, OPERANDS_TWO_VALUES); // *dst = abs(*src)
+        insert!("NEG_F64", Instruction::NegF64, OPERANDS_TWO_VALUES); // *dst = -(*src)
+        insert!("TO_I64", Instruction::ToI64, OPERANDS_TWO_VALUES); // *dst = (*src as f64) as i64 as u64
 
         // 論理演算
-        insert!("AND_U64", Operations::and_u64, OPERANDS_TWO_VALUES); // *dst = *dst & *src
-        insert!("AND_U64_IMMEDIATE", Operations::and_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst & imm
-        insert!("OR_U64", Operations::or_u64, OPERANDS_TWO_VALUES); // *dst = *dst | *src
-        insert!("OR_U64_IMMEDIATE", Operations::or_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst | imm
-        insert!("XOR_U64", Operations::xor_u64, OPERANDS_TWO_VALUES); // *dst = *dst ^ *src
-        insert!("XOR_U64_IMMEDIATE", Operations::xor_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst ^ imm
-        insert!("NOT_U64", Operations::not_u64, OPERANDS_TWO_VALUES); // *dst = !*src
-        insert!("SHL_U64", Operations::shl_u64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
-        insert!("SHL_U64_IMMEDIATE", Operations::shl_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
-        insert!("SHL_I64", Operations::shl_i64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
-        insert!("SHL_I64_IMMEDIATE", Operations::shl_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
-        insert!("SHR_U64", Operations::shr_u64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
-        insert!("SHR_U64_IMMEDIATE", Operations::shr_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
-        insert!("SHR_I64", Operations::shr_i64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
-        insert!("SHR_I64_IMMEDIATE", Operations::shr_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
-        insert!("ROL_U64", Operations::rol_u64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
-        insert!("ROL_U64_IMMEDIATE", Operations::rol_u64_immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
-        insert!("ROL_I64", Operations::rol_i64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
-        insert!("ROL_I64_IMMEDIATE", Operations::rol_i64_immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
-        insert!("ROR_U64", Operations::ror_u64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
-        insert!("ROR_U64_IMMEDIATE", Operations::ror_u64_immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm)
-        insert!("ROR_I64", Operations::ror_i64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
-        insert!("ROR_I64_IMMEDIATE", Operations::ror_i64_immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm
-        insert!("COUNT_ONES_U64", Operations::count_ones_u64, OPERANDS_TWO_VALUES); // *dst = count_ones(*src)
-        insert!("COUNT_ZEROS_U64", Operations::count_zeros_u64, OPERANDS_TWO_VALUES); // *dst = count_zeros(*src)
-        insert!("TRAILING_ZEROS_U64", Operations::trailing_zeros_u64, OPERANDS_TWO_VALUES); // *dst = trailing_zeros(*src)
+        insert!("AND_U64", Instruction::AndU64, OPERANDS_TWO_VALUES); // *dst = *dst & *src
+        insert!("AND_U64_IMMEDIATE", Instruction::AndU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst & imm
+        insert!("OR_U64", Instruction::OrU64, OPERANDS_TWO_VALUES); // *dst = *dst | *src
+        insert!("OR_U64_IMMEDIATE", Instruction::OrU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst | imm
+        insert!("XOR_U64", Instruction::XorU64, OPERANDS_TWO_VALUES); // *dst = *dst ^ *src
+        insert!("XOR_U64_IMMEDIATE", Instruction::XorU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst ^ imm
+        insert!("NOT_U64", Instruction::NotU64, OPERANDS_TWO_VALUES); // *dst = !*src
+        insert!("SHL_U64", Instruction::ShlU64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
+        insert!("SHL_U64_IMMEDIATE", Instruction::ShlU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
+        insert!("SHL_I64", Instruction::ShlI64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
+        insert!("SHL_I64_IMMEDIATE", Instruction::ShlI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
+        insert!("SHR_U64", Instruction::ShrU64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
+        insert!("SHR_U64_IMMEDIATE", Instruction::ShrU64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
+        insert!("SHR_I64", Instruction::ShrI64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
+        insert!("SHR_I64_IMMEDIATE", Instruction::ShrI64Immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
+        insert!("ROL_U64", Instruction::RolU64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
+        insert!("ROL_U64_IMMEDIATE", Instruction::RolU64Immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
+        insert!("ROL_I64", Instruction::RolI64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
+        insert!("ROL_I64_IMMEDIATE", Instruction::RolI64Immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
+        insert!("ROR_U64", Instruction::RorU64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
+        insert!("ROR_U64_IMMEDIATE", Instruction::RorU64Immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm)
+        insert!("ROR_I64", Instruction::RorI64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
+        insert!("ROR_I64_IMMEDIATE", Instruction::RorI64Immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm
+        insert!("COUNT_ONES_U64", Instruction::CountOnesU64, OPERANDS_TWO_VALUES); // *dst = count_ones(*src)
+        insert!("COUNT_ZEROS_U64", Instruction::CountZerosU64, OPERANDS_TWO_VALUES); // *dst = count_zeros(*src)
+        insert!("TRAILING_ZEROS_U64", Instruction::TrailingZerosU64, OPERANDS_TWO_VALUES); // *dst = trailing_zeros(*src)
 
         // レジスタ操作系
-        insert!("MOV", Operations::mov, OPERANDS_TWO_VALUES); // *dst = *src
-        insert!("LOAD_U64_IMMEDIATE", Operations::load_u64_immediate, OPERANDS_TWO_VALUES); // *dst = imm
-        insert!("SWAP", Operations::swap, OPERANDS_TWO_VALUES); // *reg_a, *reg_b = *reg_b, *reg_a
+        insert!("MOV", Instruction::Mov, OPERANDS_TWO_VALUES); // *dst = *src
+        insert!("LOAD_U64_IMMEDIATE", Instruction::LoadU64Immediate, OPERANDS_TWO_VALUES); // *dst = imm
+        insert!("SWAP", Instruction::Swap, OPERANDS_TWO_VALUES); // *reg_a, *reg_b = *reg_b, *reg_a
 
         // 制御系
-        insert!("JUMP", Operations::jump, OPERANDS_TWO_VALUES); // pc = *dst + offset
-        insert!("EQ_JUMP", Operations::eq_jump, OPERANDS_PACK3_VALUE); // if *a == *b { pc = *addr_reg + offset }
-        insert!("NEQ_JUMP", Operations::neq_jump, OPERANDS_PACK3_VALUE); // if *a != *b { pc = *addr_reg + offset }
-        insert!("LT_U64_JUMP", Operations::lt_u64_jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
-        insert!("LTE_U64_JUMP", Operations::lte_u64_jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
-        insert!("LT_I64_JUMP", Operations::lt_i64_jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
-        insert!("LTE_I64_JUMP", Operations::lte_i64_jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
-        insert!("GT_U64_JUMP", Operations::gt_u64_jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
-        insert!("GTE_U64_JUMP", Operations::gte_u64_jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
-        insert!("GT_I64_JUMP", Operations::gt_i64_jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
-        insert!("GTE_I64_JUMP", Operations::gte_i64_jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
-        insert!("CALL", Operations::call, OPERANDS_TWO_VALUES); // call func_index, pc
-        insert!("RET", Operations::ret, OPERANDS_NONE); // ret
+        insert!("JUMP", Instruction::Jump, OPERANDS_TWO_VALUES); // pc = *dst + offset
+        insert!("EQ_JUMP", Instruction::EqJump, OPERANDS_PACK3_VALUE); // if *a == *b { pc = *addr_reg + offset }
+        insert!("NEQ_JUMP", Instruction::NeqJump, OPERANDS_PACK3_VALUE); // if *a != *b { pc = *addr_reg + offset }
+        insert!("LT_U64_JUMP", Instruction::LtU64Jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
+        insert!("LTE_U64_JUMP", Instruction::LteU64Jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
+        insert!("LT_I64_JUMP", Instruction::LtI64Jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
+        insert!("LTE_I64_JUMP", Instruction::LteI64Jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
+        insert!("GT_U64_JUMP", Instruction::GtU64Jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
+        insert!("GTE_U64_JUMP", Instruction::GteU64Jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
+        insert!("GT_I64_JUMP", Instruction::GtI64Jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
+        insert!("GTE_I64_JUMP", Instruction::GteI64Jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
+        insert!("CALL", Instruction::Call, OPERANDS_TWO_VALUES); // call func_index, pc
+        insert!("RET", Instruction::Ret, OPERANDS_NONE); // ret
 
         // IO操作
-        insert!("PRINT_U64", Operations::print_u64, OPERANDS_TWO_VALUES); // print_u64 *src
-        insert!("ALLOC", Operations::alloc, OPERANDS_PACK2_VALUE); // allocate *size + add_size, store id in *id_res_reg
-        insert!("REALLOC", Operations::realloc, OPERANDS_TWO_VALUES); // reallocate *size for *id
-        insert!("DEALLOC", Operations::dealloc, OPERANDS_TWO_VALUES); // deallocate *id
-        insert!("EXIT", Operations::exit, OPERANDS_TWO_VALUES); // exit with code *code_reg
+        insert!("PRINT_U64", Instruction::PrintU64, OPERANDS_TWO_VALUES); // print_u64 *src
+        insert!("ALLOC", Instruction::Alloc, OPERANDS_PACK2_VALUE); // allocate *size + add_size, store id in *id_res_reg
+        insert!("REALLOC", Instruction::Realloc, OPERANDS_TWO_VALUES); // reallocate *size for *id
+        insert!("DEALLOC", Instruction::Dealloc, OPERANDS_TWO_VALUES); // deallocate *id
+        insert!("EXIT", Instruction::Exit, OPERANDS_TWO_VALUES); // exit with code *code_reg
 
         // メモリ操作
-        insert!("LOAD_U64", Operations::load_u64, OPERANDS_PACK3_VALUE); // *result_reg = *(heep_ptr(*id_reg) + *addr_reg + offset)
-        insert!("LOAD_U32", Operations::load_u32, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_U16", Operations::load_u16, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_U8", Operations::load_u8, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U64", Operations::store_u64, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U32", Operations::store_u32, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U16", Operations::store_u16, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U8", Operations::store_u8, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_U64", Instruction::LoadU64, OPERANDS_PACK3_VALUE); // *result_reg = *(heep_ptr(*id_reg) + *addr_reg + offset)
+        insert!("LOAD_U32", Instruction::LoadU32, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_U16", Instruction::LoadU16, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_U8", Instruction::LoadU8, OPERANDS_PACK3_VALUE);
+        insert!("STORE_U64", Instruction::StoreU64, OPERANDS_PACK3_VALUE);
+        insert!("STORE_U32", Instruction::StoreU32, OPERANDS_PACK3_VALUE);
+        insert!("STORE_U16", Instruction::StoreU16, OPERANDS_PACK3_VALUE);
+        insert!("STORE_U8", Instruction::StoreU8, OPERANDS_PACK3_VALUE);
 
         // atomic
-        insert!("ATOMIC_LOAD_U64", Operations::atomic_load_u64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U64", Operations::atomic_store_u64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U64", Operations::atomic_add_u64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U64", Operations::atomic_sub_u64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U32", Operations::atomic_load_u32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U32", Operations::atomic_store_u32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U32", Operations::atomic_add_u32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U32", Operations::atomic_sub_u32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U16", Operations::atomic_load_u16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U16", Operations::atomic_store_u16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U16", Operations::atomic_add_u16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U16", Operations::atomic_sub_u16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U8", Operations::atomic_load_u8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U8", Operations::atomic_store_u8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U8", Operations::atomic_add_u8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U8", Operations::atomic_sub_u8, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_LOAD_U64", Instruction::AtomicLoadU64, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_U64", Instruction::AtomicStoreU64, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_ADD_U64", Instruction::AtomicAddU64, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_U64", Instruction::AtomicSubU64, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_LOAD_U32", Instruction::AtomicLoadU32, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_U32", Instruction::AtomicStoreU32, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_ADD_U32", Instruction::AtomicAddU32, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_U32", Instruction::AtomicSubU32, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_LOAD_U16", Instruction::AtomicLoadU16, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_U16", Instruction::AtomicStoreU16, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_ADD_U16", Instruction::AtomicAddU16, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_U16", Instruction::AtomicSubU16, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_LOAD_U8", Instruction::AtomicLoadU8, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_U8", Instruction::AtomicStoreU8, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_ADD_U8", Instruction::AtomicAddU8, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_U8", Instruction::AtomicSubU8, OPERANDS_PACK4_VALUE);
 
         // 符号拡張ロード/ストア
-        insert!("LOAD_I8", Operations::load_i8, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I16", Operations::load_i16, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I32", Operations::load_i32, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I64", Operations::load_i64, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I8", Operations::store_i8, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I16", Operations::store_i16, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I32", Operations::store_i32, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I64", Operations::store_i64, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_I8", Instruction::LoadI8, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_I16", Instruction::LoadI16, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_I32", Instruction::LoadI32, OPERANDS_PACK3_VALUE);
+        insert!("LOAD_I64", Instruction::LoadI64, OPERANDS_PACK3_VALUE);
+        insert!("STORE_I8", Instruction::StoreI8, OPERANDS_PACK3_VALUE);
+        insert!("STORE_I16", Instruction::StoreI16, OPERANDS_PACK3_VALUE);
+        insert!("STORE_I32", Instruction::StoreI32, OPERANDS_PACK3_VALUE);
+        insert!("STORE_I64", Instruction::StoreI64, OPERANDS_PACK3_VALUE);
 
         // atomic 符号拡張
-        insert!("ATOMIC_LOAD_I8", Operations::atomic_load_i8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I16", Operations::atomic_load_i16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I32", Operations::atomic_load_i32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I64", Operations::atomic_load_i64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I8", Operations::atomic_store_i8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I16", Operations::atomic_store_i16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I32", Operations::atomic_store_i32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I64", Operations::atomic_store_i64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_I8", Operations::atomic_add_i8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I16", Operations::atomic_add_i16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I32", Operations::atomic_add_i32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I64", Operations::atomic_add_i64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I8", Operations::atomic_sub_i8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I16", Operations::atomic_sub_i16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I32", Operations::atomic_sub_i32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I64", Operations::atomic_sub_i64, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_LOAD_I8", Instruction::AtomicLoadI8, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_LOAD_I16", Instruction::AtomicLoadI16, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_LOAD_I32", Instruction::AtomicLoadI32, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_LOAD_I64", Instruction::AtomicLoadI64, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_I8", Instruction::AtomicStoreI8, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_I16", Instruction::AtomicStoreI16, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_I32", Instruction::AtomicStoreI32, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_STORE_I64", Instruction::AtomicStoreI64, OPERANDS_PACK3_VALUE);
+        insert!("ATOMIC_ADD_I8", Instruction::AtomicAddI8, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_ADD_I16", Instruction::AtomicAddI16, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_ADD_I32", Instruction::AtomicAddI32, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_ADD_I64", Instruction::AtomicAddI64, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_I8", Instruction::AtomicSubI8, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_I16", Instruction::AtomicSubI16, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_I32", Instruction::AtomicSubI32, OPERANDS_PACK4_VALUE);
+        insert!("ATOMIC_SUB_I64", Instruction::AtomicSubI64, OPERANDS_PACK4_VALUE);
 
         // 特殊制御
-        insert!("GET_DECODE", Operations::get_decode, OPERANDS_TWO_VALUES); // get_decode(vm, fn_r, deepr)
-        insert!("GET_DECODED", Operations::get_decoded, OPERANDS_TWO_VALUES); // get_decoded(vm, _, _)
+        insert!("GET_DECODE", Instruction::GetDecode, OPERANDS_TWO_VALUES); // get_decode(vm, fn_r, deepr)
+        insert!("GET_DECODED", Instruction::GetDecoded, OPERANDS_TWO_VALUES); // get_decoded(vm, _, _)
 
         map
     })
@@ -753,7 +753,6 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::operations::Operations;
 
     #[test]
     fn decode_matches_code_manager_set_test2() {
@@ -778,21 +777,19 @@ EXIT 0
         assert_eq!(main.len(), 9);
 
         let expected = [
-            (Operations::alloc as Op, 0x0003, 1), // ALLOC r0 r3 1 → pack([0,3]), 1
-            (Operations::add_u64_immediate as Op, 1, 1),
-            (Operations::load_u64_immediate as Op, 2, 1000000000),
-            (Operations::store_u64 as Op, 0x030000, 0), // STORE_U64 r3 r0 0 → pack([3,0,0]), 0
-            (Operations::atomic_add_u64 as Op, 0x08030001, 0), // ATOMIC_ADD_U64 r8 r3 r0 r1 → pack([8,3,0,1]), 0
-            (Operations::atomic_load_u64 as Op, 0x030004, 0), // ATOMIC_LOAD_U64 r3 r0 r4 → pack([3,0,4]), 0
-            (Operations::lt_u64_jump as Op, 0x000402, 4), // LT_U64_JUMP r0 r4 r2 4 → pack([0,4,2]), 4
-            (Operations::print_u64 as Op, 4, 0), // PRINT_U64 r4 → 4, 0
-            (Operations::exit as Op, 0, 0), // EXIT 0 → 0, 0
+            Instruction::Alloc(0x0003, 1), // ALLOC r0 r3 1 → pack([0,3]), 1
+            Instruction::AddU64Immediate(1, 1),
+            Instruction::LoadU64Immediate(2, 1000000000),
+            Instruction::StoreU64(0x030000, 0), // STORE_U64 r3 r0 0 → pack([3,0,0]), 0
+            Instruction::AtomicAddU64(0x08030001, 0), // ATOMIC_ADD_U64 r8 r3 r0 r1 → pack([8,3,0,1]), 0
+            Instruction::AtomicLoadU64(0x030004, 0), // ATOMIC_LOAD_U64 r3 r0 r4 → pack([3,0,4]), 0
+            Instruction::LtU64Jump(0x000402, 4), // LT_U64_JUMP r0 r4 r2 4 → pack([0,4,2]), 4
+            Instruction::PrintU64(4, 0), // PRINT_U64 r4 → 4, 0
+            Instruction::Exit(0, 0), // EXIT 0 → 0, 0
         ];
 
-        for (idx, (op, a, b)) in expected.iter().enumerate() {
-            assert_eq!(main[idx].f as usize, *op as usize, "opcode mismatch at {}", idx);
-            assert_eq!(main[idx].a, *a, "arg a mismatch at {}", idx);
-            assert_eq!(main[idx].b, *b, "arg b mismatch at {}", idx);
+        for (idx, expected_instruction) in expected.iter().enumerate() {
+            assert_eq!(main[idx], *expected_instruction, "instruction mismatch at {}", idx);
         }
     }
 }
