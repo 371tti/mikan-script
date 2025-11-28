@@ -6,7 +6,7 @@ use crate::vm::{code_manager::CodeManager, vm::VM};
 
 pub mod code_manager;
 pub mod memory;
-pub mod operations;
+pub mod instruction;
 pub mod pre_decoder;
 pub mod vm;
 pub mod function;

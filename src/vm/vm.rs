@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use crate::vm::{code_manager::CodeManager, function::FunctionPtr, memory::Memory};
 
+const REGISTER_NUM: usize = 256;
+
 /// Direct-threaded VM
 /// 関数ポインタ配列から命令を実行し続ける状態機械
 ///
@@ -100,14 +102,14 @@ pub struct VMState {
     /// r1~r253 : 汎用レジスタ
     /// r254 : ゴミ箱レジスタ
     /// r255 : 0xFFFFFF 固定値レジスタ
-    pub r: [u64; 256],
-    /// 呼び出しスタック
-    /// 現在の関数インデックスを保持する
-    pub call_stack: Vec<usize>,
-    pub mem: Memory,
+    pub r: [u64; REGISTER_NUM],
     pub now_function_ptr: FunctionPtr,
     pub pc: usize,
     pub now_call_index: usize,
+    pub mem: Memory,
+    /// 呼び出しスタック
+    /// 現在の関数インデックスを保持する
+    pub call_stack: Vec<usize>,
 
     /// 1 << 0 : 停止フラグ
     /// 1 << 1 : コールサイクルフラグ
@@ -116,8 +118,9 @@ pub struct VMState {
 
 impl VMState {
     pub fn new() -> Self {
-        let mut r = [0u64; 256];
-        r[255] = u64::MAX;
+        let mut r = [0u64; REGISTER_NUM];
+        r[0] = 0;
+        r[REGISTER_NUM - 1] = u64::MAX;
         VMState {
             r,
             mem: Memory::new(),

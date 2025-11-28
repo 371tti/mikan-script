@@ -1,6 +1,6 @@
 use std::{ops::Deref, pin::Pin};
 
-use crate::vm::operations::Instruction;
+use crate::vm::instruction::Instruction;
 
 /// 関数保持
 #[derive(Clone)]

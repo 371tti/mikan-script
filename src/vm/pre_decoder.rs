@@ -3,9 +3,9 @@ use std::fmt;
 use std::sync::OnceLock;
 
 use crate::vm::function::Function;
-use crate::vm::operations::Instruction;
+use crate::vm::instruction::Instruction;
 
-use super::{operations::{Operations, Op}};
+use super::{instruction::{Operations, Op}};
 
 /// 事前デコーダ
 /// バイトコードをfunction_ptr_vecに変換する
@@ -753,7 +753,7 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::operations::Operations;
+    use crate::vm::instruction::Operations;
 
     #[test]
     fn decode_matches_code_manager_set_test2() {
