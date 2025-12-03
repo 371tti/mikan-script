@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::vm::{code_manager::CodeManager, function::FunctionPtr, memory::Memory};
+use crate::vm::{code_manager::CodeManager, function::FunctionPtr, instruction::Instruction, memory::Memory};
 
 const REGISTER_NUM: usize = 256;
 
@@ -58,39 +58,60 @@ impl VM {
 
             while self.st.state_flag == 0 {
                 // アンローリング x16
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
-                let ins = &self.st.now_function_ptr.instructions[self.st.pc];
-                (ins.f)(self, ins.a, ins.b);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(self);
             }
+        }
+
+        
+    }
+
+    /// 現在の命令を読み取ります
+    #[inline(always)]
+    pub fn read_instruction(&mut self) -> &Instruction {
+        &self.st.now_function_ptr.get(self.st.pc)
+    }
+
+    /// 次のオペランドを読み取ります
+    #[inline(always)]
+    pub fn next_operand(&mut self) -> [u8; 8] {
+        unsafe {
+            self.st.pc = self.st.pc.unchecked_add(1)
+        }
+        self.read_instruction().as_ol()
+    }
+
+    /// 次の即値オペランドを読み取ります
+    #[inline(always)]
+    pub fn next_operand_imm(&mut self) -> u64 {
+        unsafe {
+            self.st.pc = self.st.pc.unchecked_add(1)
+        }
+        self.read_instruction().as_imm()
+    }
+
+    /// 次のステップに進みます
+    #[inline(always)]
+    pub fn next_step(&mut self) {
+        unsafe {
+            self.st.pc = self.st.pc.unchecked_add(1)
         }
     }
 }

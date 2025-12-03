@@ -17,6 +17,17 @@ impl Function {
     pub fn pinned_ptr(&self) -> FunctionPtr {
         FunctionPtr(self as *const Function)
     }
+
+    pub fn len(&self) -> usize {
+        self.instructions.len()
+    }
+
+    pub fn get(&self, index: usize) -> &Instruction {
+        unsafe {
+            let ptr = self.instructions.as_ptr().add(index);
+            &*ptr
+        }
+    }
 }
 
 #[derive(Clone, Copy)]

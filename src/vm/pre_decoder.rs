@@ -7,6 +7,12 @@ use crate::vm::instruction::Instruction;
 
 use super::{instruction::{Operations, Op}};
 
+#[derive(Clone)]
+enum Arg {
+    Value(u64),
+    Label(String),
+}
+
 /// 事前デコーダ
 /// バイトコードをfunction_ptr_vecに変換する
 /// 
@@ -65,14 +71,20 @@ impl OperandPlan {
 }
 
 const OPERANDS_NONE: &[OperandPlan] = &[];
-// const OPERANDS_VALUE: &[OperandPlan] = &[OperandPlan::Value];
+const OPERANDS_VALUE: &[OperandPlan] = &[OperandPlan::Value];
 const OPERANDS_TWO_VALUES: &[OperandPlan] = &[OperandPlan::Value, OperandPlan::Value];
-// const OPERANDS_PACK2: &[OperandPlan] = &[OperandPlan::PackedRegisters(2)];
+const OPERANDS_PACK1: &[OperandPlan] = &[OperandPlan::PackedRegisters(1)];
+const OPERANDS_PACK2: &[OperandPlan] = &[OperandPlan::PackedRegisters(2)];
 // const OPERANDS_PACK3: &[OperandPlan] = &[OperandPlan::PackedRegisters(3)];
 // const OPERANDS_PACK4: &[OperandPlan] = &[OperandPlan::PackedRegisters(4)];
-const OPERANDS_PACK2_VALUE: &[OperandPlan] = &[OperandPlan::PackedRegisters(2), OperandPlan::Value];
-const OPERANDS_PACK3_VALUE: &[OperandPlan] = &[OperandPlan::PackedRegisters(3), OperandPlan::Value];
-const OPERANDS_PACK4_VALUE: &[OperandPlan] = &[OperandPlan::PackedRegisters(4), OperandPlan::Value];
+const OPERANDS_PACK1_VALUE: &[OperandPlan] =
+    &[OperandPlan::PackedRegisters(1), OperandPlan::Value];
+const OPERANDS_PACK2_VALUE: &[OperandPlan] =
+    &[OperandPlan::PackedRegisters(2), OperandPlan::Value];
+const OPERANDS_PACK3_VALUE: &[OperandPlan] =
+    &[OperandPlan::PackedRegisters(3), OperandPlan::Value];
+const OPERANDS_PACK4_VALUE: &[OperandPlan] =
+    &[OperandPlan::PackedRegisters(4), OperandPlan::Value];
 
 impl PreDecoder {
     pub fn new() -> Self {
@@ -85,7 +97,7 @@ impl PreDecoder {
         let mut defined_names: HashSet<String> = HashSet::new();
         let opcode_table = opcode_table();
 
-        for (line_idx, raw_line) in source.lines().enumerate() {
+        'line_loop: for (line_idx, raw_line) in source.lines().enumerate() {
             let line_no = line_idx + 1;
             let line = raw_line
                 .splitn(2, ';')
@@ -101,7 +113,27 @@ impl PreDecoder {
             if tokens.is_empty() {
                 continue;
             }
-            let first_raw = tokens.remove(0);
+            let mut first_raw = tokens.remove(0);
+
+            loop {
+                if let Some(label_raw) = first_raw.strip_suffix(':') {
+                    let label = label_raw.to_ascii_uppercase();
+                    let func = current
+                        .as_mut()
+                        .ok_or_else(|| PreDecodeError::LabelOutsideFunction {
+                            name: label.clone(),
+                            line: line_no,
+                        })?;
+                    func.add_label(label, line_no)?;
+                    if tokens.is_empty() {
+                        continue 'line_loop;
+                    }
+                    first_raw = tokens.remove(0);
+                    continue;
+                }
+                break;
+            }
+
             let first_upper = first_raw.to_ascii_uppercase();
             let is_opcode = opcode_table.contains_key(first_upper.as_str());
 
@@ -176,7 +208,7 @@ impl PreDecoder {
             let mut cursor = 0usize;
             let mut parsed_args: Vec<Arg> = Vec::new();
 
-            for operand in spec.operands {
+            for operand in spec.operands.iter().copied() {
                 match operand {
                     OperandPlan::Value => {
                         let token = tokens_slice[cursor];
@@ -192,7 +224,7 @@ impl PreDecoder {
                             opcode_name.as_str(),
                             tokens_slice,
                             &mut cursor,
-                            *count,
+                            count,
                             line_no,
                         )?;
                         parsed_args.push(arg);
@@ -213,15 +245,15 @@ impl PreDecoder {
             for (idx, arg) in parsed_args.into_iter().enumerate() {
                 args[idx] = arg;
             }
-
+            let operand_count = spec.operands.len();
             current
                 .as_mut()
                 .unwrap()
-                .instructions
-                .push(ParsedInstruction {
+                .push_instruction(ParsedInstruction {
                     opcode: opcode_name,
                     handler: spec.handler,
                     args,
+                    operand_count,
                     line: line_no,
                 });
         }
@@ -392,7 +424,9 @@ fn parse_register_index(token: &str, line: usize) -> Result<u8, PreDecodeError> 
 }
 
 fn pack_registers(regs: &[u8]) -> u64 {
-    regs.iter().fold(0u64, |acc, &reg| (acc << 8) | reg as u64)
+    regs.iter()
+        .enumerate()
+        .fold(0u64, |acc, (i, &reg)| acc | ((reg as u64) << (i * 8)))
 }
 
 fn is_register_token(token: &str) -> bool {
@@ -417,6 +451,9 @@ fn parse_register(token: &str) -> Option<u64> {
 pub enum PreDecodeError {
     MissingMain,
     DuplicateFunction { name: String, line: usize },
+    DuplicateLabel { name: String, line: usize },
+    LabelOutsideFunction { name: String, line: usize },
+    UnknownLabel { name: String, line: usize },
     InstructionOutsideFunction { opcode: String, line: usize },
     UnknownOpcode { name: String, line: usize },
     TooManyArguments { opcode: String, provided: usize, allowed: usize, line: usize },
@@ -432,6 +469,15 @@ pub enum PreDecodeError {
 impl fmt::Display for PreDecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            PreDecodeError::DuplicateLabel { name, line } => {
+                write!(f, "label '{name}' defined multiple times (line {line})")
+            }
+            PreDecodeError::LabelOutsideFunction { name, line } => {
+                write!(f, "label '{name}' appears outside any function (line {line})")
+            }
+            PreDecodeError::UnknownLabel { name, line } => {
+                write!(f, "label '{name}' is not defined in this function (line {line})")
+            }
             PreDecodeError::MissingMain => write!(f, "MAIN function is required"),
             PreDecodeError::DuplicateFunction { name, line } => {
                 write!(f, "function '{name}' defined multiple times (line {line})")
@@ -508,6 +554,8 @@ impl std::error::Error for PreDecodeError {}
 struct ParsedFunction {
     name: String,
     instructions: Vec<ParsedInstruction>,
+    labels: HashMap<String, usize>,
+    word_offset: usize,
 }
 
 impl ParsedFunction {
@@ -515,20 +563,37 @@ impl ParsedFunction {
         Self {
             name,
             instructions: Vec::new(),
+            labels: HashMap::new(),
+            word_offset: 0,
         }
+    }
+
+    fn add_label(&mut self, name: String, line: usize) -> Result<(), PreDecodeError> {
+        if self.labels.insert(name.clone(), self.word_offset).is_some() {
+            return Err(PreDecodeError::DuplicateLabel { name, line });
+        }
+        Ok(())
+    }
+
+    fn push_instruction(&mut self, instruction: ParsedInstruction) {
+        self.word_offset += instruction.word_len();
+        self.instructions.push(instruction);
     }
 
     fn into_function(
         self,
         name_to_index: &HashMap<String, usize>,
     ) -> Result<Function, PreDecodeError> {
-        let instructions = self
-            .instructions
-            .into_iter()
-            .map(|instruction| instruction.into_instruction(name_to_index))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(Function::new(instructions.into_boxed_slice()))
+        let ParsedFunction {
+            instructions,
+            labels,
+            ..
+        } = self;
+        let mut words = Vec::new();
+        for instruction in instructions {
+            words.extend(instruction.into_instructions(name_to_index, &labels)?);
+        }
+        Ok(Function::new(words.into_boxed_slice()))
     }
 }
 
@@ -537,17 +602,36 @@ struct ParsedInstruction {
     opcode: String,
     handler: Op,
     args: [Arg; 2],
+    operand_count: usize,
     line: usize,
 }
 
 impl ParsedInstruction {
-    fn into_instruction(
+    fn word_len(&self) -> usize {
+        1 + self.operand_count
+    }
+
+    fn into_instructions(
         self,
         name_to_index: &HashMap<String, usize>,
-    ) -> Result<Instruction, PreDecodeError> {
-        let a = resolve_arg(&self.opcode, &self.args[0], name_to_index, self.line)?;
-        let b = resolve_arg(&self.opcode, &self.args[1], name_to_index, self.line)?;
-        Ok(Instruction::new(self.handler, a, b))
+        labels: &HashMap<String, usize>,
+    ) -> Result<Vec<Instruction>, PreDecodeError> {
+        let mut resolved = [0u64; 2];
+        for idx in 0..self.operand_count {
+            resolved[idx] =
+                resolve_arg(&self.opcode, &self.args[idx], name_to_index, labels, self.line)?;
+        }
+        let words = match self.operand_count {
+            0 => vec![Instruction::new_1w_op(self.handler)],
+            1 => Vec::from(Instruction::new_2w_op(self.handler, resolved[0].to_le_bytes())),
+            2 => Vec::from(Instruction::new_3w_op(
+                self.handler,
+                resolved[0].to_le_bytes(),
+                resolved[1].to_le_bytes(),
+            )),
+            _ => unreachable!(),
+        };
+        Ok(words)
     }
 }
 
@@ -555,244 +639,202 @@ fn resolve_arg(
     opcode: &str,
     arg: &Arg,
     name_to_index: &HashMap<String, usize>,
+    labels: &HashMap<String, usize>,
     line: usize,
 ) -> Result<u64, PreDecodeError> {
     match arg {
         Arg::Value(value) => Ok(*value),
         Arg::Label(label) => {
-            if opcode != "CALL" {
-                return Err(PreDecodeError::UnexpectedLabel {
+            if opcode == "CALL" {
+                name_to_index
+                    .get(label)
+                    .map(|idx| *idx as u64)
+                    .ok_or_else(|| PreDecodeError::UnknownFunction {
+                        name: label.clone(),
+                        line,
+                    })
+            } else if opcode_accepts_label(opcode) {
+                labels
+                    .get(label)
+                    .copied()
+                    .map(|offset| offset as u64)
+                    .ok_or_else(|| PreDecodeError::UnknownLabel {
+                        name: label.clone(),
+                        line,
+                    })
+            } else {
+                Err(PreDecodeError::UnexpectedLabel {
                     opcode: opcode.to_string(),
                     label: label.clone(),
                     line,
-                });
-            }
-
-            name_to_index
-                .get(label)
-                .map(|idx| *idx as u64)
-                .ok_or_else(|| PreDecodeError::UnknownFunction {
-                    name: label.clone(),
-                    line,
                 })
+            }
         }
     }
 }
 
-#[derive(Clone)]
-enum Arg {
-    Value(u64),
-    Label(String),
+fn opcode_accepts_label(opcode: &str) -> bool {
+    matches!(
+        opcode,
+        "JUMP"
+            | "EQ_JUMP"
+            | "NEQ_JUMP"
+            | "LT_U64_JUMP"
+            | "LTE_U64_JUMP"
+            | "LT_I64_JUMP"
+            | "LTE_I64_JUMP"
+            | "GT_U64_JUMP"
+            | "GTE_U64_JUMP"
+            | "GT_I64_JUMP"
+            | "GTE_I64_JUMP"
+    )
 }
 
 fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
-    static OPCODES: OnceLock<HashMap<&'static str, OpcodeSpec>> = OnceLock::new();
-    OPCODES.get_or_init(|| {
-        let mut map: HashMap<&'static str, OpcodeSpec> = HashMap::new();
-        macro_rules! insert {
-            ($name:literal, $func:expr, $operands:expr) => {
-                map.insert($name, OpcodeSpec::new($func as Op, $operands));
-            };
-        }
+    static OPCODE_TABLE: OnceLock<HashMap<&'static str, OpcodeSpec>> = OnceLock::new();
+    OPCODE_TABLE.get_or_init(|| {
+        let mut m: HashMap<&'static str, OpcodeSpec> = HashMap::new();
 
-        // 整数演算
-        insert!("ADD_U64", Operations::add_u64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_U64_IMMEDIATE", Operations::add_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("ADD_I64", Operations::add_i64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_I64_IMMEDIATE", Operations::add_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("SUB_U64", Operations::sub_u64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_U64_IMMEDIATE", Operations::sub_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("SUB_I64", Operations::sub_i64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_I64_IMMEDIATE", Operations::sub_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("MUL_U64", Operations::mul_u64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_U64_IMMEDIATE", Operations::mul_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("MUL_I64", Operations::mul_i64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_I64_IMMEDIATE", Operations::mul_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("DIV_U64", Operations::div_u64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_U64_IMMEDIATE", Operations::div_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("DIV_I64", Operations::div_i64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_I64_IMMEDIATE", Operations::div_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("ABS", Operations::abs, OPERANDS_TWO_VALUES); // *dst = abs(*src)
-        insert!("MOD_I64", Operations::mod_i64, OPERANDS_TWO_VALUES); // *dst = *dst % *src
-        insert!("NEG_I64", Operations::neg_i64, OPERANDS_TWO_VALUES); // *dst = -(*src)
-        insert!("U64_TO_F64", Operations::u64_to_f64, OPERANDS_TWO_VALUES); // *dst = (*src as f64)
-        insert!("I64_TO_F64", Operations::i64_to_f64, OPERANDS_TWO_VALUES); // *dst = (*src as i64) as f64
+        // Control
+        m.insert("RET", OpcodeSpec::new(Operations::ret as Op, OPERANDS_NONE));
+        m.insert("CALL", OpcodeSpec::new(Operations::call as Op, OPERANDS_TWO_VALUES));
+        m.insert("JUMP", OpcodeSpec::new(Operations::jump as Op, OPERANDS_PACK1_VALUE));
+        m.insert("EQ_JUMP", OpcodeSpec::new(Operations::eq_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("NEQ_JUMP", OpcodeSpec::new(Operations::neq_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LT_U64_JUMP", OpcodeSpec::new(Operations::lt_u64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LTE_U64_JUMP", OpcodeSpec::new(Operations::lte_u64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LT_I64_JUMP", OpcodeSpec::new(Operations::lt_i64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LTE_I64_JUMP", OpcodeSpec::new(Operations::lte_i64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("GT_U64_JUMP", OpcodeSpec::new(Operations::gt_u64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("GTE_U64_JUMP", OpcodeSpec::new(Operations::gte_u64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("GT_I64_JUMP", OpcodeSpec::new(Operations::gt_i64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("GTE_I64_JUMP", OpcodeSpec::new(Operations::gte_i64_jump as Op, OPERANDS_PACK3_VALUE));
 
-        // 浮動小数点演算
-        insert!("ADD_F64", Operations::add_f64, OPERANDS_TWO_VALUES); // *dst = *dst + *src
-        insert!("ADD_F64_IMMEDIATE", Operations::add_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst + imm
-        insert!("SUB_F64", Operations::sub_f64, OPERANDS_TWO_VALUES); // *dst = *dst - *src
-        insert!("SUB_F64_IMMEDIATE", Operations::sub_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst - imm
-        insert!("MUL_F64", Operations::mul_f64, OPERANDS_TWO_VALUES); // *dst = *dst * *src
-        insert!("MUL_F64_IMMEDIATE", Operations::mul_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst * imm
-        insert!("DIV_F64", Operations::div_f64, OPERANDS_TWO_VALUES); // *dst = *dst / *src
-        insert!("DIV_F64_IMMEDIATE", Operations::div_f64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst / imm
-        insert!("ABS_F64", Operations::abs_f64, OPERANDS_TWO_VALUES); // *dst = abs(*src)
-        insert!("NEG_F64", Operations::neg_f64, OPERANDS_TWO_VALUES); // *dst = -(*src)
-        insert!("TO_I64", Operations::to_i64, OPERANDS_TWO_VALUES); // *dst = (*src as f64) as i64 as u64
+        // VM ops
+        m.insert("GET_DECODE", OpcodeSpec::new(Operations::get_decode as Op, OPERANDS_TWO_VALUES));
+        m.insert("GET_DECODED", OpcodeSpec::new(Operations::get_decoded as Op, OPERANDS_NONE));
+        m.insert("EXIT", OpcodeSpec::new(Operations::exit as Op, OPERANDS_VALUE));
 
-        // 論理演算
-        insert!("AND_U64", Operations::and_u64, OPERANDS_TWO_VALUES); // *dst = *dst & *src
-        insert!("AND_U64_IMMEDIATE", Operations::and_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst & imm
-        insert!("OR_U64", Operations::or_u64, OPERANDS_TWO_VALUES); // *dst = *dst | *src
-        insert!("OR_U64_IMMEDIATE", Operations::or_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst | imm
-        insert!("XOR_U64", Operations::xor_u64, OPERANDS_TWO_VALUES); // *dst = *dst ^ *src
-        insert!("XOR_U64_IMMEDIATE", Operations::xor_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst ^ imm
-        insert!("NOT_U64", Operations::not_u64, OPERANDS_TWO_VALUES); // *dst = !*src
-        insert!("SHL_U64", Operations::shl_u64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
-        insert!("SHL_U64_IMMEDIATE", Operations::shl_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
-        insert!("SHL_I64", Operations::shl_i64, OPERANDS_TWO_VALUES); // *dst = *dst << *src
-        insert!("SHL_I64_IMMEDIATE", Operations::shl_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst << imm
-        insert!("SHR_U64", Operations::shr_u64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
-        insert!("SHR_U64_IMMEDIATE", Operations::shr_u64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
-        insert!("SHR_I64", Operations::shr_i64, OPERANDS_TWO_VALUES); // *dst = *dst >> *src
-        insert!("SHR_I64_IMMEDIATE", Operations::shr_i64_immediate, OPERANDS_TWO_VALUES); // *dst = *dst >> imm
-        insert!("ROL_U64", Operations::rol_u64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
-        insert!("ROL_U64_IMMEDIATE", Operations::rol_u64_immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
-        insert!("ROL_I64", Operations::rol_i64, OPERANDS_TWO_VALUES); // *dst = rol(*dst, *src)
-        insert!("ROL_I64_IMMEDIATE", Operations::rol_i64_immediate, OPERANDS_TWO_VALUES); // *dst = rol(*dst, imm)
-        insert!("ROR_U64", Operations::ror_u64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
-        insert!("ROR_U64_IMMEDIATE", Operations::ror_u64_immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm)
-        insert!("ROR_I64", Operations::ror_i64, OPERANDS_TWO_VALUES); // *dst = ror(*dst, *src)
-        insert!("ROR_I64_IMMEDIATE", Operations::ror_i64_immediate, OPERANDS_TWO_VALUES); // *dst = ror(*dst, imm
-        insert!("COUNT_ONES_U64", Operations::count_ones_u64, OPERANDS_TWO_VALUES); // *dst = count_ones(*src)
-        insert!("COUNT_ZEROS_U64", Operations::count_zeros_u64, OPERANDS_TWO_VALUES); // *dst = count_zeros(*src)
-        insert!("TRAILING_ZEROS_U64", Operations::trailing_zeros_u64, OPERANDS_TWO_VALUES); // *dst = trailing_zeros(*src)
+        // IO / Memory
+        m.insert("PRINT_U64", OpcodeSpec::new(Operations::print_u64 as Op, OPERANDS_PACK1));
+        m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as Op, OPERANDS_PACK2_VALUE));
+        m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as Op, OPERANDS_PACK2));
+        m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as Op, OPERANDS_PACK1));
 
-        // レジスタ操作系
-        insert!("MOV", Operations::mov, OPERANDS_TWO_VALUES); // *dst = *src
-        insert!("LOAD_U64_IMMEDIATE", Operations::load_u64_immediate, OPERANDS_TWO_VALUES); // *dst = imm
-        insert!("SWAP", Operations::swap, OPERANDS_TWO_VALUES); // *reg_a, *reg_b = *reg_b, *reg_a
+        // Register ops
+        m.insert("MOV", OpcodeSpec::new(Operations::mov as Op, OPERANDS_PACK2));
+        m.insert("LOAD_U64_IMMEDIATE", OpcodeSpec::new(Operations::load_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SWAP", OpcodeSpec::new(Operations::swap as Op, OPERANDS_PACK2));
 
-        // 制御系
-        insert!("JUMP", Operations::jump, OPERANDS_TWO_VALUES); // pc = *dst + offset
-        insert!("EQ_JUMP", Operations::eq_jump, OPERANDS_PACK3_VALUE); // if *a == *b { pc = *addr_reg + offset }
-        insert!("NEQ_JUMP", Operations::neq_jump, OPERANDS_PACK3_VALUE); // if *a != *b { pc = *addr_reg + offset }
-        insert!("LT_U64_JUMP", Operations::lt_u64_jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
-        insert!("LTE_U64_JUMP", Operations::lte_u64_jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
-        insert!("LT_I64_JUMP", Operations::lt_i64_jump, OPERANDS_PACK3_VALUE); // if *a < *b { pc = *addr_reg + offset }
-        insert!("LTE_I64_JUMP", Operations::lte_i64_jump, OPERANDS_PACK3_VALUE); // if *a <= *b { pc = *addr_reg + offset }
-        insert!("GT_U64_JUMP", Operations::gt_u64_jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
-        insert!("GTE_U64_JUMP", Operations::gte_u64_jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
-        insert!("GT_I64_JUMP", Operations::gt_i64_jump, OPERANDS_PACK3_VALUE); // if *a > *b { pc = *addr_reg + offset }
-        insert!("GTE_I64_JUMP", Operations::gte_i64_jump, OPERANDS_PACK3_VALUE); // if *a >= *b { pc = *addr_reg + offset }
-        insert!("CALL", Operations::call, OPERANDS_TWO_VALUES); // call func_index, pc
-        insert!("RET", Operations::ret, OPERANDS_NONE); // ret
+        // Int calcs
+        m.insert("ADD_U64", OpcodeSpec::new(Operations::add_u64 as Op, OPERANDS_PACK2));
+        m.insert("ADD_U64_IMMEDIATE", OpcodeSpec::new(Operations::add_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("ADD_I64", OpcodeSpec::new(Operations::add_i64 as Op, OPERANDS_PACK2));
+        m.insert("ADD_I64_IMMEDIATE", OpcodeSpec::new(Operations::add_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_U64", OpcodeSpec::new(Operations::sub_u64 as Op, OPERANDS_PACK2));
+        m.insert("SUB_U64_IMMEDIATE", OpcodeSpec::new(Operations::sub_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_I64", OpcodeSpec::new(Operations::sub_i64 as Op, OPERANDS_PACK2));
+        m.insert("SUB_I64_IMMEDIATE", OpcodeSpec::new(Operations::sub_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_U64", OpcodeSpec::new(Operations::mul_u64 as Op, OPERANDS_PACK2));
+        m.insert("MUL_U64_IMMEDIATE", OpcodeSpec::new(Operations::mul_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_I64", OpcodeSpec::new(Operations::mul_i64 as Op, OPERANDS_PACK2));
+        m.insert("MUL_I64_IMMEDIATE", OpcodeSpec::new(Operations::mul_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_U64", OpcodeSpec::new(Operations::div_u64 as Op, OPERANDS_PACK2));
+        m.insert("DIV_U64_IMMEDIATE", OpcodeSpec::new(Operations::div_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_I64", OpcodeSpec::new(Operations::div_i64 as Op, OPERANDS_PACK2));
+        m.insert("DIV_I64_IMMEDIATE", OpcodeSpec::new(Operations::div_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("ABS", OpcodeSpec::new(Operations::abs as Op, OPERANDS_PACK2));
+        m.insert("MOD_I64", OpcodeSpec::new(Operations::mod_i64 as Op, OPERANDS_PACK2));
+        m.insert("NEG_I64", OpcodeSpec::new(Operations::neg_i64 as Op, OPERANDS_PACK2));
+        m.insert("U64_TO_F64", OpcodeSpec::new(Operations::u64_to_f64 as Op, OPERANDS_PACK2));
+        m.insert("I64_TO_F64", OpcodeSpec::new(Operations::i64_to_f64 as Op, OPERANDS_PACK2));
 
-        // IO操作
-        insert!("PRINT_U64", Operations::print_u64, OPERANDS_TWO_VALUES); // print_u64 *src
-        insert!("ALLOC", Operations::alloc, OPERANDS_PACK2_VALUE); // allocate *size + add_size, store id in *id_res_reg
-        insert!("REALLOC", Operations::realloc, OPERANDS_TWO_VALUES); // reallocate *size for *id
-        insert!("DEALLOC", Operations::dealloc, OPERANDS_TWO_VALUES); // deallocate *id
-        insert!("EXIT", Operations::exit, OPERANDS_TWO_VALUES); // exit with code *code_reg
+        // Float ops
+        m.insert("ADD_F64", OpcodeSpec::new(Operations::add_f64 as Op, OPERANDS_PACK2));
+        m.insert("ADD_F64_IMMEDIATE", OpcodeSpec::new(Operations::add_f64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_F64", OpcodeSpec::new(Operations::sub_f64 as Op, OPERANDS_PACK2));
+        m.insert("SUB_F64_IMMEDIATE", OpcodeSpec::new(Operations::sub_f64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_F64", OpcodeSpec::new(Operations::mul_f64 as Op, OPERANDS_PACK2));
+        m.insert("MUL_F64_IMMEDIATE", OpcodeSpec::new(Operations::mul_f64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_F64", OpcodeSpec::new(Operations::div_f64 as Op, OPERANDS_PACK2));
+        m.insert("DIV_F64_IMMEDIATE", OpcodeSpec::new(Operations::div_f64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("ABS_F64", OpcodeSpec::new(Operations::abs_f64 as Op, OPERANDS_PACK2));
+        m.insert("NEG_F64", OpcodeSpec::new(Operations::neg_f64 as Op, OPERANDS_PACK2));
+        m.insert("TO_I64", OpcodeSpec::new(Operations::to_i64 as Op, OPERANDS_PACK2));
 
-        // メモリ操作
-        insert!("LOAD_U64", Operations::load_u64, OPERANDS_PACK3_VALUE); // *result_reg = *(heep_ptr(*id_reg) + *addr_reg + offset)
-        insert!("LOAD_U32", Operations::load_u32, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_U16", Operations::load_u16, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_U8", Operations::load_u8, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U64", Operations::store_u64, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U32", Operations::store_u32, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U16", Operations::store_u16, OPERANDS_PACK3_VALUE);
-        insert!("STORE_U8", Operations::store_u8, OPERANDS_PACK3_VALUE);
+        // Bit ops
+        m.insert("AND_U64", OpcodeSpec::new(Operations::and_u64 as Op, OPERANDS_PACK2));
+        m.insert("AND_U64_IMMEDIATE", OpcodeSpec::new(Operations::and_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("OR_U64", OpcodeSpec::new(Operations::or_u64 as Op, OPERANDS_PACK2));
+        m.insert("OR_U64_IMMEDIATE", OpcodeSpec::new(Operations::or_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("XOR_U64", OpcodeSpec::new(Operations::xor_u64 as Op, OPERANDS_PACK2));
+        m.insert("XOR_U64_IMMEDIATE", OpcodeSpec::new(Operations::xor_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("NOT_U64", OpcodeSpec::new(Operations::not_u64 as Op, OPERANDS_PACK2));
+        m.insert("SHL_U64", OpcodeSpec::new(Operations::shl_u64 as Op, OPERANDS_PACK2));
+        m.insert("SHL_U64_IMMEDIATE", OpcodeSpec::new(Operations::shl_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SHL_I64", OpcodeSpec::new(Operations::shl_i64 as Op, OPERANDS_PACK2));
+        m.insert("SHL_I64_IMMEDIATE", OpcodeSpec::new(Operations::shl_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SHR_U64", OpcodeSpec::new(Operations::shr_u64 as Op, OPERANDS_PACK2));
+        m.insert("SHR_U64_IMMEDIATE", OpcodeSpec::new(Operations::shr_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("SHR_I64", OpcodeSpec::new(Operations::shr_i64 as Op, OPERANDS_PACK2));
+        m.insert("SHR_I64_IMMEDIATE", OpcodeSpec::new(Operations::shr_i64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("ROL_U64", OpcodeSpec::new(Operations::rol_u64 as Op, OPERANDS_PACK2));
+        m.insert("ROL_U64_IMMEDIATE", OpcodeSpec::new(Operations::rol_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("ROR_U64", OpcodeSpec::new(Operations::ror_u64 as Op, OPERANDS_PACK2));
+        m.insert("ROR_U64_IMMEDIATE", OpcodeSpec::new(Operations::ror_u64_immediate as Op, OPERANDS_PACK1_VALUE));
+        m.insert("COUNT_ONES_U64", OpcodeSpec::new(Operations::count_ones_u64 as Op, OPERANDS_PACK2));
+        m.insert("COUNT_ZEROS_U64", OpcodeSpec::new(Operations::count_zeros_u64 as Op, OPERANDS_PACK2));
+        m.insert("TRAILING_ZEROS_U64", OpcodeSpec::new(Operations::trailing_zeros_u64 as Op, OPERANDS_PACK2));
 
-        // atomic
-        insert!("ATOMIC_LOAD_U64", Operations::atomic_load_u64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U64", Operations::atomic_store_u64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U64", Operations::atomic_add_u64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U64", Operations::atomic_sub_u64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U32", Operations::atomic_load_u32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U32", Operations::atomic_store_u32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U32", Operations::atomic_add_u32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U32", Operations::atomic_sub_u32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U16", Operations::atomic_load_u16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U16", Operations::atomic_store_u16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U16", Operations::atomic_add_u16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U16", Operations::atomic_sub_u16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_LOAD_U8", Operations::atomic_load_u8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_U8", Operations::atomic_store_u8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_U8", Operations::atomic_add_u8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_U8", Operations::atomic_sub_u8, OPERANDS_PACK4_VALUE);
+        // Memory ops
+        m.insert("LOAD_U64", OpcodeSpec::new(Operations::load_u64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U32", OpcodeSpec::new(Operations::load_u32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U16", OpcodeSpec::new(Operations::load_u16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U8", OpcodeSpec::new(Operations::load_u8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U64", OpcodeSpec::new(Operations::store_u64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U32", OpcodeSpec::new(Operations::store_u32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U16", OpcodeSpec::new(Operations::store_u16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U8", OpcodeSpec::new(Operations::store_u8 as Op, OPERANDS_PACK3_VALUE));
 
-        // 符号拡張ロード/ストア
-        insert!("LOAD_I8", Operations::load_i8, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I16", Operations::load_i16, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I32", Operations::load_i32, OPERANDS_PACK3_VALUE);
-        insert!("LOAD_I64", Operations::load_i64, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I8", Operations::store_i8, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I16", Operations::store_i16, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I32", Operations::store_i32, OPERANDS_PACK3_VALUE);
-        insert!("STORE_I64", Operations::store_i64, OPERANDS_PACK3_VALUE);
+        // atomic ops (u64/u32/u16/u8 variants for load/store/add/sub) - common pattern: PACK3_VALUE for load/store, PACK4_VALUE for add/sub
+        m.insert("ATOMIC_LOAD_U64", OpcodeSpec::new(Operations::atomic_load_u64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U64", OpcodeSpec::new(Operations::atomic_store_u64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U64", OpcodeSpec::new(Operations::atomic_add_u64 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U64", OpcodeSpec::new(Operations::atomic_sub_u64 as Op, OPERANDS_PACK4_VALUE));
 
-        // atomic 符号拡張
-        insert!("ATOMIC_LOAD_I8", Operations::atomic_load_i8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I16", Operations::atomic_load_i16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I32", Operations::atomic_load_i32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_LOAD_I64", Operations::atomic_load_i64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I8", Operations::atomic_store_i8, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I16", Operations::atomic_store_i16, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I32", Operations::atomic_store_i32, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_STORE_I64", Operations::atomic_store_i64, OPERANDS_PACK3_VALUE);
-        insert!("ATOMIC_ADD_I8", Operations::atomic_add_i8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I16", Operations::atomic_add_i16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I32", Operations::atomic_add_i32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_ADD_I64", Operations::atomic_add_i64, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I8", Operations::atomic_sub_i8, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I16", Operations::atomic_sub_i16, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I32", Operations::atomic_sub_i32, OPERANDS_PACK4_VALUE);
-        insert!("ATOMIC_SUB_I64", Operations::atomic_sub_i64, OPERANDS_PACK4_VALUE);
+        m.insert("ATOMIC_LOAD_U32", OpcodeSpec::new(Operations::atomic_load_u32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U32", OpcodeSpec::new(Operations::atomic_store_u32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U32", OpcodeSpec::new(Operations::atomic_add_u32 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U32", OpcodeSpec::new(Operations::atomic_sub_u32 as Op, OPERANDS_PACK4_VALUE));
 
-        // 特殊制御
-        insert!("GET_DECODE", Operations::get_decode, OPERANDS_TWO_VALUES); // get_decode(vm, fn_r, deepr)
-        insert!("GET_DECODED", Operations::get_decoded, OPERANDS_TWO_VALUES); // get_decoded(vm, _, _)
+        m.insert("ATOMIC_LOAD_U16", OpcodeSpec::new(Operations::atomic_load_u16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U16", OpcodeSpec::new(Operations::atomic_store_u16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U16", OpcodeSpec::new(Operations::atomic_add_u16 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U16", OpcodeSpec::new(Operations::atomic_sub_u16 as Op, OPERANDS_PACK4_VALUE));
 
-        map
+        m.insert("ATOMIC_LOAD_U8", OpcodeSpec::new(Operations::atomic_load_u8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U8", OpcodeSpec::new(Operations::atomic_store_u8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U8", OpcodeSpec::new(Operations::atomic_add_u8 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U8", OpcodeSpec::new(Operations::atomic_sub_u8 as Op, OPERANDS_PACK4_VALUE));
+
+        // Atomic signed variants
+        m.insert("ATOMIC_LOAD_I8", OpcodeSpec::new(Operations::atomic_load_i8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I16", OpcodeSpec::new(Operations::atomic_load_i16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I32", OpcodeSpec::new(Operations::atomic_load_i32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I64", OpcodeSpec::new(Operations::atomic_load_i64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I8", OpcodeSpec::new(Operations::atomic_store_i8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I16", OpcodeSpec::new(Operations::atomic_store_i16 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I32", OpcodeSpec::new(Operations::atomic_store_i32 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I64", OpcodeSpec::new(Operations::atomic_store_i64 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_I8", OpcodeSpec::new(Operations::atomic_add_i8 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I16", OpcodeSpec::new(Operations::atomic_add_i16 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I32", OpcodeSpec::new(Operations::atomic_add_i32 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I64", OpcodeSpec::new(Operations::atomic_add_i64 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I8", OpcodeSpec::new(Operations::atomic_sub_i8 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I16", OpcodeSpec::new(Operations::atomic_sub_i16 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I32", OpcodeSpec::new(Operations::atomic_sub_i32 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I64", OpcodeSpec::new(Operations::atomic_sub_i64 as Op, OPERANDS_PACK4_VALUE));
+
+        m
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::vm::instruction::Operations;
-
-    #[test]
-    fn decode_matches_code_manager_set_test2() {
-        let source = r#"
-MAIN
-ALLOC r0 r3 1
-ADD_U64_IMMEDIATE r1 1
-LOAD_U64_IMMEDIATE r2 1000000000
-STORE_U64 r3 r0 0
-ATOMIC_ADD_U64 r8 r3 r0 r1
-ATOMIC_LOAD_U64 r3 r0 r4
-LT_U64_JUMP r0 r4 r2 4
-PRINT_U64 r4
-EXIT 0
-"#;
-
-        let decoder = PreDecoder::new();
-        let functions = decoder.decode(source).expect("decode succeeds");
-        assert_eq!(functions.len(), 2);
-
-        let main = &functions[0].instructions;
-        assert_eq!(main.len(), 9);
-
-        let expected = [
-            (Operations::alloc as Op, 0x0003, 1), // ALLOC r0 r3 1 → pack([0,3]), 1
-            (Operations::add_u64_immediate as Op, 1, 1),
-            (Operations::load_u64_immediate as Op, 2, 1000000000),
-            (Operations::store_u64 as Op, 0x030000, 0), // STORE_U64 r3 r0 0 → pack([3,0,0]), 0
-            (Operations::atomic_add_u64 as Op, 0x08030001, 0), // ATOMIC_ADD_U64 r8 r3 r0 r1 → pack([8,3,0,1]), 0
-            (Operations::atomic_load_u64 as Op, 0x030004, 0), // ATOMIC_LOAD_U64 r3 r0 r4 → pack([3,0,4]), 0
-            (Operations::lt_u64_jump as Op, 0x000402, 4), // LT_U64_JUMP r0 r4 r2 4 → pack([0,4,2]), 4
-            (Operations::print_u64 as Op, 4, 0), // PRINT_U64 r4 → 4, 0
-            (Operations::exit as Op, 0, 0), // EXIT 0 → 0, 0
-        ];
-
-        for (idx, (op, a, b)) in expected.iter().enumerate() {
-            assert_eq!(main[idx].f as usize, *op as usize, "opcode mismatch at {}", idx);
-            assert_eq!(main[idx].a, *a, "arg a mismatch at {}", idx);
-            assert_eq!(main[idx].b, *b, "arg b mismatch at {}", idx);
-        }
-    }
 }

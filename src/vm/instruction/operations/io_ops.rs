@@ -4,54 +4,65 @@ use crate::vm::{instruction::operations::Operations, vm::VM};
 /// IO操作
 impl Operations {
     /// 整数の出力
-    /// print_u64 *src
+    /// 2 word instruction
+    /// ol[0]: src register index
     #[inline(always)]
-    pub fn print_u64(vm: &mut VM, src: u64, _: u64) {
+    pub fn print_u64(vm: &mut VM) {
         unsafe {
+            let ol = vm.next_operand();
             let r = vm.st.r.as_mut_ptr();
-            println!("{}", *r.add(src as usize));
+            println!("{}", *r.add(ol[0] as usize));
         }
-        vm.st.pc += 1; // fallthrough
+        vm.next_step();
     }
 
     /// allocate memory
     /// allocate *size + add_size, store id in *id_res_reg
-    /// size_idr: [ size_reg(8bit) | id_res_reg(8bit) ]
+    /// ol[0]: size reg
+    /// ol[1]: id res reg
+    /// oh: immediate add_size
     #[inline(always)]
-    pub fn alloc(vm: &mut VM, size_idr: u64, add_size: u64) {
-        let size_reg = ((size_idr >> 8) & 0xFF) as usize;
-        let id_res_reg = (size_idr & 0xFF) as usize;
+    pub fn alloc(vm: &mut VM) {
         unsafe {
+            let ol = vm.next_operand();
+            let add_size = vm.next_operand_imm();
+            let size_reg = ol[0] as usize;
+            let id_res_reg = ol[1] as usize;
             let r = vm.st.r.as_mut_ptr();
             let size = (*r.add(size_reg)).wrapping_add(add_size) as usize;
             let id = vm.st.mem.alloc_heep(size);
             *r.add(id_res_reg) = id;
         }
-        vm.st.pc += 1; // fallthrough
+        vm.next_step();
     }
 
     /// reallocate memory
-    /// reallocate *size for *id
+    /// 2 word instruction
+    /// ol[0]: size reg
+    /// ol[1]: id reg
     #[inline(always)]
-    pub fn realloc(vm: &mut VM, size: u64, id: u64) {
+    pub fn realloc(vm: &mut VM) {
         unsafe {
+            let ol = vm.next_operand();
             let r = vm.st.r.as_mut_ptr();
-            let size = *r.add(size as usize) as usize;
-            let id = *r.add(id as usize);
+            let size = *r.add(ol[0] as usize) as usize;
+            let id = *r.add(ol[1] as usize);
             vm.st.mem.realloc_heep(id, size);
         }
-        vm.st.pc += 1; // fallthrough
+        vm.next_step();
     }
 
     /// deallocate memory
-    /// deallocate *id
+    /// 2 word instruction
+    /// ol[0]: id reg
     #[inline(always)]
-    pub fn dealloc(vm: &mut VM, id: u64, _: u64) {
+    pub fn dealloc(vm: &mut VM) {
         unsafe {
+            let ol = vm.next_operand();
             let r = vm.st.r.as_mut_ptr();
-            let id = *r.add(id as usize);
+            let id = *r.add(ol[0] as usize);
             vm.st.mem.dealloc_heep(id);
         }
-        vm.st.pc += 1; // fallthrough
+        vm.next_step();
     }
 }
