@@ -1,4 +1,4 @@
-use crate::vm::{instruction::operations::Operations, vm::{VM, state_flag}};
+use crate::vm::{instruction::operations::Operations, vm::VM};
 
 
 /// IO操作
@@ -53,20 +53,5 @@ impl Operations {
             vm.st.mem.dealloc_heep(id);
         }
         vm.st.pc += 1; // fallthrough
-    }
-
-    /// read file to memory
-    /// heep_id path_ptr path_size 
-
-    /// プログラム終了
-    /// exit with code *code_reg
-    #[inline(always)]
-    pub fn exit(vm: &mut VM, code_reg: u64, _: u64) {
-        unsafe {
-            let r = vm.st.r.as_mut_ptr();
-            let code = *r.add(code_reg as usize);
-            vm.st.r[0] = code; // return code
-            vm.st.state_flag |= state_flag::PAUSE;
-        }
     }
 }

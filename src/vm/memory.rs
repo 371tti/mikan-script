@@ -4,6 +4,7 @@ use std::{
     ptr::NonNull,
 };
 
+/// 仮想メモリ
 pub struct Memory {
     pub data: Vec<Heep>,
     pub reuse_list: Vec<usize>,
@@ -21,7 +22,7 @@ impl Memory {
     #[inline(always)]
     pub fn alloc_heep(&mut self, size: usize) -> u64 {
         if let Some(id) = self.reuse_list.pop() {
-            let heep = &mut self.data[id as usize];
+            let heep = &self.data[id as usize];
             heep.alloc(size);
             return id as u64;
         } else {
@@ -34,7 +35,7 @@ impl Memory {
 
     #[inline(always)]
     pub fn realloc_heep(&mut self, id: u64, new_size: usize) {
-        if let Some(heep) = self.data.get_mut(id as usize) {
+        if let Some(heep) = self.data.get(id as usize) {
             heep.realloc(new_size);
         } else {
             std::process::exit(-9998);
@@ -43,7 +44,7 @@ impl Memory {
 
     #[inline(always)]
     pub fn dealloc_heep(&mut self, id: u64) {
-        if let Some(heep) = self.data.get_mut(id as usize) {
+        if let Some(heep) = self.data.get(id as usize) {
             heep.dealloc();
             self.reuse_list.push(id as usize);
         } else {
@@ -52,13 +53,21 @@ impl Memory {
     }
 
     #[inline(always)]
-    pub fn head_ptr(&mut self, id: u64) -> usize {
+    pub fn head_ptr(&self, id: u64) -> usize {
         if let Some(heep) = self.data.get(id as usize) {
             let ptr = heep.ptr();
             ptr
         } else {
             std::process::exit(-9998);
         }
+    }
+
+    pub fn total_memory_size(&self) -> usize {
+        let mut total_size = 0;
+        for heep in &self.data {
+            total_size += heep.size;
+        }
+        total_size
     }
 }
 
@@ -125,29 +134,35 @@ impl RawHeep {
     }
 
     #[inline(always)]
-    fn alloc(&mut self, size: usize) {
+    fn alloc(&self, size: usize) {
         let layout = alloc::Layout::from_size_align(size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::alloc(layout) };
         if uncheck_ptr.is_null() {
             oom();
         }
-        self.ptr = unsafe { NonNull::new_unchecked(uncheck_ptr) };
-        self.size = size;
+        unsafe {
+            let this = self as *const Self as *mut Self;
+            (*this).ptr = NonNull::new_unchecked(uncheck_ptr);
+            (*this).size = size;
+        }
     }
 
     #[inline(always)]
-    fn realloc(&mut self, new_size: usize) {
+    fn realloc(&self, new_size: usize) {
         let layout = alloc::Layout::from_size_align(self.size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::realloc(self.ptr(), layout, new_size) };
         if uncheck_ptr.is_null() {
             oom();
         }
-        self.ptr = unsafe { NonNull::new_unchecked(uncheck_ptr) };
-        self.size = new_size;
+        unsafe {
+            let this = self as *const Self as *mut Self;
+            (*this).ptr = NonNull::new_unchecked(uncheck_ptr);
+            (*this).size = new_size;
+        }
     }
 
     #[inline(always)]
-    fn dealloc(&mut self) {
+    fn dealloc(&self) {
         let layout = alloc::Layout::from_size_align(self.size, Self::ALIGN).unwrap();
         unsafe {
             alloc::dealloc(self.ptr(), layout);
