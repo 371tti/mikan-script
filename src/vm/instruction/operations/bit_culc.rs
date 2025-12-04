@@ -8,7 +8,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst & *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn and_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -25,7 +25,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst & imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn and_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -43,7 +43,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst | *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn or_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -60,7 +60,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst | imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn or_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -78,7 +78,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst ^ *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn xor_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -95,7 +95,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst ^ imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn xor_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -113,7 +113,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = !*src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn not_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -130,7 +130,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst << *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shl_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -147,7 +147,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst << imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shl_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -165,7 +165,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst << *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shl_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -182,7 +182,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst << imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shl_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -200,7 +200,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst >> *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shr_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -217,7 +217,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst >> imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shr_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -235,7 +235,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst >> *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shr_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -252,7 +252,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = *dst >> imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn shr_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -270,7 +270,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = rol(*dst, *src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn rol_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -289,7 +289,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = rol(*dst, imm)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn rol_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -309,7 +309,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = rol(*dst, *src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn rol_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -328,7 +328,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = rol(*dst, imm)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn rol_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -348,7 +348,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = ror(*dst, *src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn ror_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -367,7 +367,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = ror(*dst, imm)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn ror_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -387,7 +387,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = ror(*dst, *src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn ror_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -406,7 +406,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64)
     /// *dst = ror(*dst, imm)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn ror_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -426,7 +426,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = count_ones(*src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn count_ones_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -443,7 +443,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = count_zeros(*src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn count_zeros_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -460,7 +460,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = trailing_zeros(*src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn trailing_zeros_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();

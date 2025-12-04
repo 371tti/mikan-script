@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use crate::vm::{function::{Function, FunctionPtr}, pre_decoder::PreDecoder};
 
+#[derive(Clone, Debug)]
 pub struct CodeManager {
     inner: Arc<CodeManagerInner>,
 }
@@ -30,6 +31,8 @@ impl Deref for CodeManager {
     }
 }
 
+
+#[derive(Debug)]
 pub struct CodeManagerInner {
     /// 最新の関数テーブル
     /// 初期でMainとその差し替え関数のみが入ってるとしておく
@@ -83,6 +86,7 @@ impl CodeManagerInner {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct UnDecodedFunction {
     pub is_decoded: bool,
     /// 未割当ならMAXで

@@ -5,6 +5,7 @@ use std::{
 };
 
 /// 仮想メモリ
+#[derive(Clone, Debug)]
 pub struct Memory {
     pub data: Vec<Heep>,
     pub reuse_list: Vec<usize>,
@@ -19,7 +20,7 @@ impl Memory {
     }
 
     /// 新しいHeepとそのid
-    // #[inline(always)]
+    #[inline(always)]
     pub fn alloc_heep(&mut self, size: usize) -> u64 {
         if let Some(id) = self.reuse_list.pop() {
             let heep = &self.data[id as usize];
@@ -33,7 +34,7 @@ impl Memory {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     pub fn realloc_heep(&mut self, id: u64, new_size: usize) {
         if let Some(heep) = self.data.get(id as usize) {
             heep.realloc(new_size);
@@ -42,7 +43,7 @@ impl Memory {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     pub fn dealloc_heep(&mut self, id: u64) {
         if let Some(heep) = self.data.get(id as usize) {
             heep.dealloc();
@@ -52,7 +53,7 @@ impl Memory {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     pub fn head_ptr(&self, id: u64) -> usize {
         if let Some(heep) = self.data.get(id as usize) {
             let ptr = heep.ptr();
@@ -71,19 +72,20 @@ impl Memory {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Heep {
     pub raw: RawHeep,
 }
 
 impl Heep {
-    // #[inline(always)]
+    #[inline(always)]
     pub fn new(size: usize) -> Self {
         Heep {
             raw: RawHeep::new(size),
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     pub fn ptr(&self) -> usize {
         self.raw.ptr() as usize
     }
@@ -95,19 +97,20 @@ unsafe impl Sync for Heep {}
 impl Deref for Heep {
     type Target = RawHeep;
 
-    // #[inline(always)]
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.raw
     }
 }
 
 impl DerefMut for Heep {
-    // #[inline(always)]
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.raw
     }
 }
 
+#[derive(Debug)]
 pub struct RawHeep {
     pub ptr: NonNull<u8>,
     pub size: usize,
@@ -116,7 +119,7 @@ pub struct RawHeep {
 impl RawHeep {
     const ALIGN: usize = 64;
 
-    // #[inline(always)]
+    #[inline(always)]
     fn new(size: usize) -> Self {
         let layout = alloc::Layout::from_size_align(size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::alloc(layout) };
@@ -128,12 +131,12 @@ impl RawHeep {
         RawHeep { ptr, size }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     fn ptr(&self) -> *mut u8 {
         self.ptr.as_ptr()
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     fn alloc(&self, size: usize) {
         let layout = alloc::Layout::from_size_align(size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::alloc(layout) };
@@ -147,7 +150,7 @@ impl RawHeep {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     fn realloc(&self, new_size: usize) {
         let layout = alloc::Layout::from_size_align(self.size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::realloc(self.ptr(), layout, new_size) };
@@ -161,7 +164,7 @@ impl RawHeep {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     fn dealloc(&self) {
         let layout = alloc::Layout::from_size_align(self.size, Self::ALIGN).unwrap();
         unsafe {
@@ -169,7 +172,7 @@ impl RawHeep {
         }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     fn deep_copy(&self) -> Self {
         let new_struct = RawHeep::new(self.size);
         unsafe {
@@ -180,14 +183,14 @@ impl RawHeep {
 }
 
 impl Clone for RawHeep {
-    // #[inline(always)]
+    #[inline(always)]
     fn clone(&self) -> Self {
         self.deep_copy()
     }
 }
 
 impl Drop for RawHeep {
-    // #[inline(always)]
+    #[inline(always)]
     fn drop(&mut self) {
         self.dealloc();
     }

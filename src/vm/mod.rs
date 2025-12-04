@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf, sync::{Arc, RwLock}, thread::{self, JoinHandle}
+    path::PathBuf, thread::{self, JoinHandle}
 };
 
 use crate::vm::{code_manager::CodeManager, vm::VM};
@@ -12,7 +12,7 @@ pub mod vm;
 pub mod function;
 
 pub struct VMPool {
-    pub vms: Vec<Arc<RwLock<VM>>>,
+    pub vm_num: u64,
     handles: Vec<JoinHandle<()>>,
     pub code_manager: CodeManager,
 }
@@ -20,7 +20,7 @@ pub struct VMPool {
 impl VMPool {
     pub fn new() -> Self {
         VMPool {
-            vms: Vec::new(),
+            vm_num: 0,
             handles: Vec::new(),
             code_manager: CodeManager::new("none".into()),
         }
@@ -41,20 +41,19 @@ impl VMPool {
     }
 
     pub fn push_and_run_threaded(&mut self, mut vm: VM, use_core_affinity: bool) {
-        let index = self.vms.len();
-        vm.vm_id = index as u64;
+        let index = self.vm_num;
+        vm.vm_id = index;
         vm.cm = self.code_manager.clone_shared();
-        let vm_arc = Arc::new(RwLock::new(vm));
-        self.vms.push(vm_arc.clone());
+        self.vm_num += 1;
+
 
         let handle = thread::spawn(move || {
             if use_core_affinity {
                 if let Some(cores) = core_affinity::get_core_ids() {
-                    let core = &cores[index % cores.len()];
+                    let core = &cores[(index as usize) % cores.len()];
                     core_affinity::set_for_current(*core);
                 }
             }
-            let mut vm = vm_arc.write().unwrap();
             vm.run();
         });
 

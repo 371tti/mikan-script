@@ -6,7 +6,7 @@ impl Operations {
     /// レジスタ間値コピー
     /// ol[0]: dst register index
     /// ol[1]: src register index
-    // #[inline(always)]
+    #[inline(always)]
     pub fn mov(vm: &mut VM) {
         let ol = vm.next_operand();
         let dst = ol[0] as usize;
@@ -21,7 +21,7 @@ impl Operations {
     /// 即値ロード
     /// ol[0]: dst register index
     /// oh: immediate imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_u64_immediate(vm: &mut VM) {
         let ol = vm.next_operand();
         let dst = ol[0] as usize;
@@ -36,7 +36,7 @@ impl Operations {
     /// 交換
     /// ol[0]: reg_a
     /// ol[1]: reg_b
-    // #[inline(always)]
+    #[inline(always)]
     pub fn swap(vm: &mut VM) {
         let ol = vm.next_operand();
         let a = ol[0] as usize;

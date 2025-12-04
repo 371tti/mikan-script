@@ -7,6 +7,7 @@ const REGISTER_NUM: usize = 256;
 /// Direct-threaded VM
 /// 関数ポインタ配列から命令を実行し続ける状態機械
 #[repr(align(64))]
+#[derive(Clone, Debug)]
 pub struct VM {
     /// VMの状態
     pub st: VMState,
@@ -44,8 +45,8 @@ impl VM {
     }
 
     /// 指定の関数を実行します
-    // #[inline(always)]
-    pub fn run(&mut self) {
+    #[inline(always)]
+    pub fn run(mut self) -> Self {
         // コードマネージャから関数テーブルを取得
         self.function_table = self.cm.get_decoded();
 
@@ -59,40 +60,39 @@ impl VM {
 
             while self.st.state_flag == 0 {
                 // アンローリング x16
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
-                let ins = self.read_instruction(); ins.as_fn()(self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
+                let ins = self.read_instruction(); ins.as_fn()(&mut self);
             }
         }
 
-
+        self
     }
 
     /// 現在の命令を読み取ります
     #[inline(always)]
-    pub fn read_instruction(&mut self) -> &Instruction {
-        &self.st.now_function_ptr.get(self.st.pc)
+    pub fn read_instruction(&mut self) -> Instruction {
+        self.st.now_function_ptr.fast_get(self.st.pc)
     }
 
     /// 次のオペランドを読み取ります
     #[inline(always)]
-    pub fn next_operand(&mut self) -> &[u8; 8] {
+    pub fn next_operand(&mut self) -> [u8; 8] {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
         }
@@ -119,6 +119,7 @@ impl VM {
 
 /// VMの状態を保持する構造体
 #[repr(align(64))]
+#[derive(Clone, Debug)]
 pub struct VMState {
     /// 汎用レジスタ
     /// r0 : 0x000000 固定値レジスタ

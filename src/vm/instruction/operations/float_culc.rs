@@ -9,7 +9,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst + *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn add_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -28,7 +28,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64, f64 bits)
     /// *dst = *dst + imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn add_f64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -46,7 +46,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst - *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn sub_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -65,7 +65,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64, f64 bits)
     /// *dst = *dst - imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn sub_f64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -83,7 +83,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst * *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn mul_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -102,7 +102,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64, f64 bits)
     /// *dst = *dst * imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn mul_f64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -120,7 +120,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = *dst / *src
-    // #[inline(always)]
+    #[inline(always)]
     pub fn div_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -139,7 +139,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// imm: immediate value (u64, f64 bits)
     /// *dst = *dst / imm
-    // #[inline(always)]
+    #[inline(always)]
     pub fn div_f64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -157,7 +157,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = abs(*src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn abs_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -175,7 +175,7 @@ impl Operations {
     /// ol[0]: dst register index
     /// ol[1]: src register index
     /// *dst = -(*src)
-    // #[inline(always)]
+    #[inline(always)]
     pub fn neg_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -192,7 +192,7 @@ impl Operations {
     /// 2 word instruction
     /// ol[0]: dst register index
     /// ol[1]: src register index
-    // #[inline(always)]
+    #[inline(always)]
     pub fn to_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();

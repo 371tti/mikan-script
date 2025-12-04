@@ -10,7 +10,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -31,7 +31,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -52,7 +52,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -73,7 +73,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -94,7 +94,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -115,7 +115,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -136,7 +136,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -157,7 +157,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -178,7 +178,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -200,7 +200,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -220,7 +220,7 @@ impl Operations {
     /// atomic u64 加算（結果を result_reg に格納）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -241,7 +241,7 @@ impl Operations {
     /// atomic u64 減算（結果を result_reg に格納）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_u64(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -264,7 +264,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: result_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -286,7 +286,7 @@ impl Operations {
     /// ol[1]: addr_reg
     /// ol[2]: src_reg
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -306,7 +306,7 @@ impl Operations {
     /// atomic u32 加算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -327,7 +327,7 @@ impl Operations {
     /// atomic u32 減算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_u32(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -348,7 +348,7 @@ impl Operations {
     /// atomic u16 ロード
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -368,7 +368,7 @@ impl Operations {
     /// atomic u16 ストア
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -388,7 +388,7 @@ impl Operations {
     /// atomic u16 加算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -409,7 +409,7 @@ impl Operations {
     /// atomic u16 減算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_u16(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -430,7 +430,7 @@ impl Operations {
     /// atomic u8 ロード
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -450,7 +450,7 @@ impl Operations {
     /// atomic u8 ストア
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -470,7 +470,7 @@ impl Operations {
     /// atomic u8 加算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -491,7 +491,7 @@ impl Operations {
     /// atomic u8 減算
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_u8(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -512,7 +512,7 @@ impl Operations {
     /// i8ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -531,7 +531,7 @@ impl Operations {
     /// i16ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -550,7 +550,7 @@ impl Operations {
     /// i32ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -569,7 +569,7 @@ impl Operations {
     /// i64ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn load_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -588,7 +588,7 @@ impl Operations {
     /// i8ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -607,7 +607,7 @@ impl Operations {
     /// i16ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -626,7 +626,7 @@ impl Operations {
     /// i32ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -645,7 +645,7 @@ impl Operations {
     /// i64ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn store_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -664,7 +664,7 @@ impl Operations {
     /// atomic i8 ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -684,7 +684,7 @@ impl Operations {
     /// atomic i16 ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -704,7 +704,7 @@ impl Operations {
     /// atomic i32 ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -724,7 +724,7 @@ impl Operations {
     /// atomic i64 ロード（符号拡張）
     /// ol: [ id_reg | addr_reg | result_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_load_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -744,7 +744,7 @@ impl Operations {
     /// atomic i8 ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -764,7 +764,7 @@ impl Operations {
     /// atomic i16 ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -784,7 +784,7 @@ impl Operations {
     /// atomic i32 ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -804,7 +804,7 @@ impl Operations {
     /// atomic i64 ストア（符号拡張）
     /// ol: [ id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_store_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let id_reg = ol[0] as usize;
@@ -824,7 +824,7 @@ impl Operations {
     /// atomic i8 加算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -846,7 +846,7 @@ impl Operations {
     /// atomic i16 加算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -868,7 +868,7 @@ impl Operations {
     /// atomic i32 加算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -890,7 +890,7 @@ impl Operations {
     /// atomic i64 加算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_add_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -912,7 +912,7 @@ impl Operations {
     /// atomic i8 減算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_i8(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -934,7 +934,7 @@ impl Operations {
     /// atomic i16 減算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_i16(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -956,7 +956,7 @@ impl Operations {
     /// atomic i32 減算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_i32(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;
@@ -978,7 +978,7 @@ impl Operations {
     /// atomic i64 減算（符号拡張）
     /// ol: [ result_reg | id_reg | addr_reg | src_reg ]
     /// oh: immediate offset
-    // #[inline(always)]
+    #[inline(always)]
     pub fn atomic_sub_i64(vm: &mut VM) {
         let ol = vm.next_operand();
         let result_reg = ol[0] as usize;

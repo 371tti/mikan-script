@@ -3,7 +3,7 @@ use std::{ops::Deref, pin::Pin};
 use crate::vm::instruction::Instruction;
 
 /// 関数保持
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub instructions: Pin<Box<[Instruction]>>,
 }
@@ -13,7 +13,7 @@ impl Function {
         Function { instructions: Pin::new(instructions) }
     }
 
-    // #[inline(always)]
+    #[inline(always)]
     pub fn pinned_ptr(&self) -> FunctionPtr {
         FunctionPtr(self as *const Function)
     }
@@ -22,21 +22,21 @@ impl Function {
         self.instructions.len()
     }
 
-    // #[inline(always)]
-    pub fn get(&self, index: usize) -> &Instruction {
+    #[inline(always)]
+    pub fn fast_get(&self, index: usize) -> Instruction {
         unsafe {
-            self.instructions.get_unchecked(index)
+            *self.instructions.get_unchecked(index)
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct FunctionPtr(pub *const Function);
 
 impl Deref for FunctionPtr {
     type Target = Function;
 
-    // #[inline(always)]
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.0 }
     }

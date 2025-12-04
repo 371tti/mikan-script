@@ -3,9 +3,9 @@ use std::fmt;
 use std::sync::OnceLock;
 
 use crate::vm::function::Function;
-use crate::vm::instruction::Instruction;
+use crate::vm::instruction::{Instruction, OpPtr};
 
-use super::{instruction::{Operations, Op}};
+use super::{instruction::operations::Operations};
 
 #[derive(Clone)]
 enum Arg {
@@ -27,15 +27,16 @@ enum Arg {
 /// ...
 /// RET     ; 関数終了
 /// ```
+#[derive(Clone, Debug)]
 pub struct PreDecoder;
 
 #[derive(Copy, Clone)]
 struct OpcodeSpec {
-    handler: Op,
+    handler: OpPtr,
     operands: &'static [OperandPlan],
 }
 impl OpcodeSpec {
-    const fn new(handler: Op, operands: &'static [OperandPlan]) -> Self {
+    const fn new(handler: OpPtr, operands: &'static [OperandPlan]) -> Self {
         Self { handler, operands }
     }
 
@@ -600,7 +601,7 @@ impl ParsedFunction {
 #[derive(Clone)]
 struct ParsedInstruction {
     opcode: String,
-    handler: Op,
+    handler: OpPtr,
     args: [Arg; 2],
     operand_count: usize,
     line: usize,
@@ -696,144 +697,144 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
         let mut m: HashMap<&'static str, OpcodeSpec> = HashMap::new();
 
         // Control
-        m.insert("RET", OpcodeSpec::new(Operations::ret as Op, OPERANDS_NONE));
-        m.insert("CALL", OpcodeSpec::new(Operations::call as Op, OPERANDS_TWO_VALUES));
-        m.insert("JUMP", OpcodeSpec::new(Operations::jump as Op, OPERANDS_PACK1_VALUE));
-        m.insert("EQ_JUMP", OpcodeSpec::new(Operations::eq_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("NEQ_JUMP", OpcodeSpec::new(Operations::neq_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LT_U64_JUMP", OpcodeSpec::new(Operations::lt_u64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LTE_U64_JUMP", OpcodeSpec::new(Operations::lte_u64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LT_I64_JUMP", OpcodeSpec::new(Operations::lt_i64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LTE_I64_JUMP", OpcodeSpec::new(Operations::lte_i64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("GT_U64_JUMP", OpcodeSpec::new(Operations::gt_u64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("GTE_U64_JUMP", OpcodeSpec::new(Operations::gte_u64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("GT_I64_JUMP", OpcodeSpec::new(Operations::gt_i64_jump as Op, OPERANDS_PACK3_VALUE));
-        m.insert("GTE_I64_JUMP", OpcodeSpec::new(Operations::gte_i64_jump as Op, OPERANDS_PACK3_VALUE));
+        m.insert("RET", OpcodeSpec::new(Operations::ret as OpPtr, OPERANDS_NONE));
+        m.insert("CALL", OpcodeSpec::new(Operations::call as OpPtr, OPERANDS_TWO_VALUES));
+        m.insert("JUMP", OpcodeSpec::new(Operations::jump as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("EQ_JUMP", OpcodeSpec::new(Operations::eq_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("NEQ_JUMP", OpcodeSpec::new(Operations::neq_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LT_U64_JUMP", OpcodeSpec::new(Operations::lt_u64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LTE_U64_JUMP", OpcodeSpec::new(Operations::lte_u64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LT_I64_JUMP", OpcodeSpec::new(Operations::lt_i64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LTE_I64_JUMP", OpcodeSpec::new(Operations::lte_i64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("GT_U64_JUMP", OpcodeSpec::new(Operations::gt_u64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("GTE_U64_JUMP", OpcodeSpec::new(Operations::gte_u64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("GT_I64_JUMP", OpcodeSpec::new(Operations::gt_i64_jump as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("GTE_I64_JUMP", OpcodeSpec::new(Operations::gte_i64_jump as OpPtr, OPERANDS_PACK3_VALUE));
 
         // VM ops
-        m.insert("GET_DECODE", OpcodeSpec::new(Operations::get_decode as Op, OPERANDS_TWO_VALUES));
-        m.insert("GET_DECODED", OpcodeSpec::new(Operations::get_decoded as Op, OPERANDS_NONE));
-        m.insert("EXIT", OpcodeSpec::new(Operations::exit as Op, OPERANDS_VALUE));
+        m.insert("GET_DECODE", OpcodeSpec::new(Operations::get_decode as OpPtr, OPERANDS_TWO_VALUES));
+        m.insert("GET_DECODED", OpcodeSpec::new(Operations::get_decoded as OpPtr, OPERANDS_NONE));
+        m.insert("EXIT", OpcodeSpec::new(Operations::exit as OpPtr, OPERANDS_VALUE));
 
         // IO / Memory
-        m.insert("PRINT_U64", OpcodeSpec::new(Operations::print_u64 as Op, OPERANDS_PACK1));
-        m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as Op, OPERANDS_PACK2_VALUE));
-        m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as Op, OPERANDS_PACK2));
-        m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as Op, OPERANDS_PACK1));
+        m.insert("PRINT_U64", OpcodeSpec::new(Operations::print_u64 as OpPtr, OPERANDS_PACK1));
+        m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as OpPtr, OPERANDS_PACK2));
+        m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as OpPtr, OPERANDS_PACK1));
 
         // Register ops
-        m.insert("MOV", OpcodeSpec::new(Operations::mov as Op, OPERANDS_PACK2));
-        m.insert("LOAD_U64_IMMEDIATE", OpcodeSpec::new(Operations::load_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SWAP", OpcodeSpec::new(Operations::swap as Op, OPERANDS_PACK2));
+        m.insert("MOV", OpcodeSpec::new(Operations::mov as OpPtr, OPERANDS_PACK2));
+        m.insert("LOAD_U64_IMMEDIATE", OpcodeSpec::new(Operations::load_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SWAP", OpcodeSpec::new(Operations::swap as OpPtr, OPERANDS_PACK2));
 
         // Int calcs
-        m.insert("ADD_U64", OpcodeSpec::new(Operations::add_u64 as Op, OPERANDS_PACK2));
-        m.insert("ADD_U64_IMMEDIATE", OpcodeSpec::new(Operations::add_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("ADD_I64", OpcodeSpec::new(Operations::add_i64 as Op, OPERANDS_PACK2));
-        m.insert("ADD_I64_IMMEDIATE", OpcodeSpec::new(Operations::add_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SUB_U64", OpcodeSpec::new(Operations::sub_u64 as Op, OPERANDS_PACK2));
-        m.insert("SUB_U64_IMMEDIATE", OpcodeSpec::new(Operations::sub_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SUB_I64", OpcodeSpec::new(Operations::sub_i64 as Op, OPERANDS_PACK2));
-        m.insert("SUB_I64_IMMEDIATE", OpcodeSpec::new(Operations::sub_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("MUL_U64", OpcodeSpec::new(Operations::mul_u64 as Op, OPERANDS_PACK2));
-        m.insert("MUL_U64_IMMEDIATE", OpcodeSpec::new(Operations::mul_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("MUL_I64", OpcodeSpec::new(Operations::mul_i64 as Op, OPERANDS_PACK2));
-        m.insert("MUL_I64_IMMEDIATE", OpcodeSpec::new(Operations::mul_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("DIV_U64", OpcodeSpec::new(Operations::div_u64 as Op, OPERANDS_PACK2));
-        m.insert("DIV_U64_IMMEDIATE", OpcodeSpec::new(Operations::div_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("DIV_I64", OpcodeSpec::new(Operations::div_i64 as Op, OPERANDS_PACK2));
-        m.insert("DIV_I64_IMMEDIATE", OpcodeSpec::new(Operations::div_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("ABS", OpcodeSpec::new(Operations::abs as Op, OPERANDS_PACK2));
-        m.insert("MOD_I64", OpcodeSpec::new(Operations::mod_i64 as Op, OPERANDS_PACK2));
-        m.insert("NEG_I64", OpcodeSpec::new(Operations::neg_i64 as Op, OPERANDS_PACK2));
-        m.insert("U64_TO_F64", OpcodeSpec::new(Operations::u64_to_f64 as Op, OPERANDS_PACK2));
-        m.insert("I64_TO_F64", OpcodeSpec::new(Operations::i64_to_f64 as Op, OPERANDS_PACK2));
+        m.insert("ADD_U64", OpcodeSpec::new(Operations::add_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("ADD_U64_IMMEDIATE", OpcodeSpec::new(Operations::add_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("ADD_I64", OpcodeSpec::new(Operations::add_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("ADD_I64_IMMEDIATE", OpcodeSpec::new(Operations::add_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_U64", OpcodeSpec::new(Operations::sub_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SUB_U64_IMMEDIATE", OpcodeSpec::new(Operations::sub_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_I64", OpcodeSpec::new(Operations::sub_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SUB_I64_IMMEDIATE", OpcodeSpec::new(Operations::sub_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_U64", OpcodeSpec::new(Operations::mul_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("MUL_U64_IMMEDIATE", OpcodeSpec::new(Operations::mul_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_I64", OpcodeSpec::new(Operations::mul_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("MUL_I64_IMMEDIATE", OpcodeSpec::new(Operations::mul_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_U64", OpcodeSpec::new(Operations::div_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("DIV_U64_IMMEDIATE", OpcodeSpec::new(Operations::div_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_I64", OpcodeSpec::new(Operations::div_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("DIV_I64_IMMEDIATE", OpcodeSpec::new(Operations::div_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("ABS", OpcodeSpec::new(Operations::abs as OpPtr, OPERANDS_PACK2));
+        m.insert("MOD_I64", OpcodeSpec::new(Operations::mod_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("NEG_I64", OpcodeSpec::new(Operations::neg_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("U64_TO_F64", OpcodeSpec::new(Operations::u64_to_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("I64_TO_F64", OpcodeSpec::new(Operations::i64_to_f64 as OpPtr, OPERANDS_PACK2));
 
         // Float ops
-        m.insert("ADD_F64", OpcodeSpec::new(Operations::add_f64 as Op, OPERANDS_PACK2));
-        m.insert("ADD_F64_IMMEDIATE", OpcodeSpec::new(Operations::add_f64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SUB_F64", OpcodeSpec::new(Operations::sub_f64 as Op, OPERANDS_PACK2));
-        m.insert("SUB_F64_IMMEDIATE", OpcodeSpec::new(Operations::sub_f64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("MUL_F64", OpcodeSpec::new(Operations::mul_f64 as Op, OPERANDS_PACK2));
-        m.insert("MUL_F64_IMMEDIATE", OpcodeSpec::new(Operations::mul_f64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("DIV_F64", OpcodeSpec::new(Operations::div_f64 as Op, OPERANDS_PACK2));
-        m.insert("DIV_F64_IMMEDIATE", OpcodeSpec::new(Operations::div_f64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("ABS_F64", OpcodeSpec::new(Operations::abs_f64 as Op, OPERANDS_PACK2));
-        m.insert("NEG_F64", OpcodeSpec::new(Operations::neg_f64 as Op, OPERANDS_PACK2));
-        m.insert("TO_I64", OpcodeSpec::new(Operations::to_i64 as Op, OPERANDS_PACK2));
+        m.insert("ADD_F64", OpcodeSpec::new(Operations::add_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("ADD_F64_IMMEDIATE", OpcodeSpec::new(Operations::add_f64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SUB_F64", OpcodeSpec::new(Operations::sub_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SUB_F64_IMMEDIATE", OpcodeSpec::new(Operations::sub_f64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("MUL_F64", OpcodeSpec::new(Operations::mul_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("MUL_F64_IMMEDIATE", OpcodeSpec::new(Operations::mul_f64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("DIV_F64", OpcodeSpec::new(Operations::div_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("DIV_F64_IMMEDIATE", OpcodeSpec::new(Operations::div_f64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("ABS_F64", OpcodeSpec::new(Operations::abs_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("NEG_F64", OpcodeSpec::new(Operations::neg_f64 as OpPtr, OPERANDS_PACK2));
+        m.insert("TO_I64", OpcodeSpec::new(Operations::to_i64 as OpPtr, OPERANDS_PACK2));
 
         // Bit ops
-        m.insert("AND_U64", OpcodeSpec::new(Operations::and_u64 as Op, OPERANDS_PACK2));
-        m.insert("AND_U64_IMMEDIATE", OpcodeSpec::new(Operations::and_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("OR_U64", OpcodeSpec::new(Operations::or_u64 as Op, OPERANDS_PACK2));
-        m.insert("OR_U64_IMMEDIATE", OpcodeSpec::new(Operations::or_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("XOR_U64", OpcodeSpec::new(Operations::xor_u64 as Op, OPERANDS_PACK2));
-        m.insert("XOR_U64_IMMEDIATE", OpcodeSpec::new(Operations::xor_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("NOT_U64", OpcodeSpec::new(Operations::not_u64 as Op, OPERANDS_PACK2));
-        m.insert("SHL_U64", OpcodeSpec::new(Operations::shl_u64 as Op, OPERANDS_PACK2));
-        m.insert("SHL_U64_IMMEDIATE", OpcodeSpec::new(Operations::shl_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SHL_I64", OpcodeSpec::new(Operations::shl_i64 as Op, OPERANDS_PACK2));
-        m.insert("SHL_I64_IMMEDIATE", OpcodeSpec::new(Operations::shl_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SHR_U64", OpcodeSpec::new(Operations::shr_u64 as Op, OPERANDS_PACK2));
-        m.insert("SHR_U64_IMMEDIATE", OpcodeSpec::new(Operations::shr_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("SHR_I64", OpcodeSpec::new(Operations::shr_i64 as Op, OPERANDS_PACK2));
-        m.insert("SHR_I64_IMMEDIATE", OpcodeSpec::new(Operations::shr_i64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("ROL_U64", OpcodeSpec::new(Operations::rol_u64 as Op, OPERANDS_PACK2));
-        m.insert("ROL_U64_IMMEDIATE", OpcodeSpec::new(Operations::rol_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("ROR_U64", OpcodeSpec::new(Operations::ror_u64 as Op, OPERANDS_PACK2));
-        m.insert("ROR_U64_IMMEDIATE", OpcodeSpec::new(Operations::ror_u64_immediate as Op, OPERANDS_PACK1_VALUE));
-        m.insert("COUNT_ONES_U64", OpcodeSpec::new(Operations::count_ones_u64 as Op, OPERANDS_PACK2));
-        m.insert("COUNT_ZEROS_U64", OpcodeSpec::new(Operations::count_zeros_u64 as Op, OPERANDS_PACK2));
-        m.insert("TRAILING_ZEROS_U64", OpcodeSpec::new(Operations::trailing_zeros_u64 as Op, OPERANDS_PACK2));
+        m.insert("AND_U64", OpcodeSpec::new(Operations::and_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("AND_U64_IMMEDIATE", OpcodeSpec::new(Operations::and_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("OR_U64", OpcodeSpec::new(Operations::or_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("OR_U64_IMMEDIATE", OpcodeSpec::new(Operations::or_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("XOR_U64", OpcodeSpec::new(Operations::xor_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("XOR_U64_IMMEDIATE", OpcodeSpec::new(Operations::xor_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("NOT_U64", OpcodeSpec::new(Operations::not_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SHL_U64", OpcodeSpec::new(Operations::shl_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SHL_U64_IMMEDIATE", OpcodeSpec::new(Operations::shl_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SHL_I64", OpcodeSpec::new(Operations::shl_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SHL_I64_IMMEDIATE", OpcodeSpec::new(Operations::shl_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SHR_U64", OpcodeSpec::new(Operations::shr_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SHR_U64_IMMEDIATE", OpcodeSpec::new(Operations::shr_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("SHR_I64", OpcodeSpec::new(Operations::shr_i64 as OpPtr, OPERANDS_PACK2));
+        m.insert("SHR_I64_IMMEDIATE", OpcodeSpec::new(Operations::shr_i64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("ROL_U64", OpcodeSpec::new(Operations::rol_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("ROL_U64_IMMEDIATE", OpcodeSpec::new(Operations::rol_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("ROR_U64", OpcodeSpec::new(Operations::ror_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("ROR_U64_IMMEDIATE", OpcodeSpec::new(Operations::ror_u64_immediate as OpPtr, OPERANDS_PACK1_VALUE));
+        m.insert("COUNT_ONES_U64", OpcodeSpec::new(Operations::count_ones_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("COUNT_ZEROS_U64", OpcodeSpec::new(Operations::count_zeros_u64 as OpPtr, OPERANDS_PACK2));
+        m.insert("TRAILING_ZEROS_U64", OpcodeSpec::new(Operations::trailing_zeros_u64 as OpPtr, OPERANDS_PACK2));
 
         // Memory ops
-        m.insert("LOAD_U64", OpcodeSpec::new(Operations::load_u64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U32", OpcodeSpec::new(Operations::load_u32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U16", OpcodeSpec::new(Operations::load_u16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U8", OpcodeSpec::new(Operations::load_u8 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U64", OpcodeSpec::new(Operations::store_u64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U32", OpcodeSpec::new(Operations::store_u32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U16", OpcodeSpec::new(Operations::store_u16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U8", OpcodeSpec::new(Operations::store_u8 as Op, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U64", OpcodeSpec::new(Operations::load_u64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U32", OpcodeSpec::new(Operations::load_u32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U16", OpcodeSpec::new(Operations::load_u16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U8", OpcodeSpec::new(Operations::load_u8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U64", OpcodeSpec::new(Operations::store_u64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U32", OpcodeSpec::new(Operations::store_u32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U16", OpcodeSpec::new(Operations::store_u16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("STORE_U8", OpcodeSpec::new(Operations::store_u8 as OpPtr, OPERANDS_PACK3_VALUE));
 
         // atomic ops (u64/u32/u16/u8 variants for load/store/add/sub) - common pattern: PACK3_VALUE for load/store, PACK4_VALUE for add/sub
-        m.insert("ATOMIC_LOAD_U64", OpcodeSpec::new(Operations::atomic_load_u64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U64", OpcodeSpec::new(Operations::atomic_store_u64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U64", OpcodeSpec::new(Operations::atomic_add_u64 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U64", OpcodeSpec::new(Operations::atomic_sub_u64 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U64", OpcodeSpec::new(Operations::atomic_load_u64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U64", OpcodeSpec::new(Operations::atomic_store_u64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U64", OpcodeSpec::new(Operations::atomic_add_u64 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U64", OpcodeSpec::new(Operations::atomic_sub_u64 as OpPtr, OPERANDS_PACK4_VALUE));
 
-        m.insert("ATOMIC_LOAD_U32", OpcodeSpec::new(Operations::atomic_load_u32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U32", OpcodeSpec::new(Operations::atomic_store_u32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U32", OpcodeSpec::new(Operations::atomic_add_u32 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U32", OpcodeSpec::new(Operations::atomic_sub_u32 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U32", OpcodeSpec::new(Operations::atomic_load_u32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U32", OpcodeSpec::new(Operations::atomic_store_u32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U32", OpcodeSpec::new(Operations::atomic_add_u32 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U32", OpcodeSpec::new(Operations::atomic_sub_u32 as OpPtr, OPERANDS_PACK4_VALUE));
 
-        m.insert("ATOMIC_LOAD_U16", OpcodeSpec::new(Operations::atomic_load_u16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U16", OpcodeSpec::new(Operations::atomic_store_u16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U16", OpcodeSpec::new(Operations::atomic_add_u16 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U16", OpcodeSpec::new(Operations::atomic_sub_u16 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U16", OpcodeSpec::new(Operations::atomic_load_u16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U16", OpcodeSpec::new(Operations::atomic_store_u16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U16", OpcodeSpec::new(Operations::atomic_add_u16 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U16", OpcodeSpec::new(Operations::atomic_sub_u16 as OpPtr, OPERANDS_PACK4_VALUE));
 
-        m.insert("ATOMIC_LOAD_U8", OpcodeSpec::new(Operations::atomic_load_u8 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U8", OpcodeSpec::new(Operations::atomic_store_u8 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U8", OpcodeSpec::new(Operations::atomic_add_u8 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U8", OpcodeSpec::new(Operations::atomic_sub_u8 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U8", OpcodeSpec::new(Operations::atomic_load_u8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_U8", OpcodeSpec::new(Operations::atomic_store_u8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_U8", OpcodeSpec::new(Operations::atomic_add_u8 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_U8", OpcodeSpec::new(Operations::atomic_sub_u8 as OpPtr, OPERANDS_PACK4_VALUE));
 
         // Atomic signed variants
-        m.insert("ATOMIC_LOAD_I8", OpcodeSpec::new(Operations::atomic_load_i8 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I16", OpcodeSpec::new(Operations::atomic_load_i16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I32", OpcodeSpec::new(Operations::atomic_load_i32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I64", OpcodeSpec::new(Operations::atomic_load_i64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I8", OpcodeSpec::new(Operations::atomic_store_i8 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I16", OpcodeSpec::new(Operations::atomic_store_i16 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I32", OpcodeSpec::new(Operations::atomic_store_i32 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I64", OpcodeSpec::new(Operations::atomic_store_i64 as Op, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_I8", OpcodeSpec::new(Operations::atomic_add_i8 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I16", OpcodeSpec::new(Operations::atomic_add_i16 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I32", OpcodeSpec::new(Operations::atomic_add_i32 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I64", OpcodeSpec::new(Operations::atomic_add_i64 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I8", OpcodeSpec::new(Operations::atomic_sub_i8 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I16", OpcodeSpec::new(Operations::atomic_sub_i16 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I32", OpcodeSpec::new(Operations::atomic_sub_i32 as Op, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I64", OpcodeSpec::new(Operations::atomic_sub_i64 as Op, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_I8", OpcodeSpec::new(Operations::atomic_load_i8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I16", OpcodeSpec::new(Operations::atomic_load_i16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I32", OpcodeSpec::new(Operations::atomic_load_i32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_LOAD_I64", OpcodeSpec::new(Operations::atomic_load_i64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I8", OpcodeSpec::new(Operations::atomic_store_i8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I16", OpcodeSpec::new(Operations::atomic_store_i16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I32", OpcodeSpec::new(Operations::atomic_store_i32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_STORE_I64", OpcodeSpec::new(Operations::atomic_store_i64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_I8", OpcodeSpec::new(Operations::atomic_add_i8 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I16", OpcodeSpec::new(Operations::atomic_add_i16 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I32", OpcodeSpec::new(Operations::atomic_add_i32 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_ADD_I64", OpcodeSpec::new(Operations::atomic_add_i64 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I8", OpcodeSpec::new(Operations::atomic_sub_i8 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I16", OpcodeSpec::new(Operations::atomic_sub_i16 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I32", OpcodeSpec::new(Operations::atomic_sub_i32 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_SUB_I64", OpcodeSpec::new(Operations::atomic_sub_i64 as OpPtr, OPERANDS_PACK4_VALUE));
 
         m
     })
