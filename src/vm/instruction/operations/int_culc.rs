@@ -9,9 +9,10 @@ impl Operations {
     pub fn add_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (*r.add(dst)).wrapping_add(*r.add(src));
         }
         vm.next_step();
@@ -23,9 +24,10 @@ impl Operations {
     pub fn add_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = (*r.add(dst)).wrapping_add(imm);
         }
         vm.next_step();
@@ -37,9 +39,10 @@ impl Operations {
     pub fn add_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_add(*r.add(src) as i64)) as u64;
         }
         vm.next_step();
@@ -51,9 +54,10 @@ impl Operations {
     pub fn add_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_add(imm as i64)) as u64;
         }
         vm.next_step();
@@ -65,9 +69,10 @@ impl Operations {
     pub fn sub_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (*r.add(dst)).wrapping_sub(*r.add(src));
         }
         vm.next_step();
@@ -79,9 +84,10 @@ impl Operations {
     pub fn sub_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = (*r.add(dst)).wrapping_sub(imm);
         }
         vm.next_step();
@@ -93,9 +99,10 @@ impl Operations {
     pub fn sub_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_sub(*r.add(src) as i64)) as u64;
         }
         vm.next_step();
@@ -107,9 +114,10 @@ impl Operations {
     pub fn sub_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_sub(imm as i64)) as u64;
         }
         vm.next_step();
@@ -121,9 +129,10 @@ impl Operations {
     pub fn mul_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (*r.add(dst)).wrapping_mul(*r.add(src));
         }
         vm.next_step();
@@ -135,9 +144,10 @@ impl Operations {
     pub fn mul_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = (*r.add(dst)).wrapping_mul(imm);
         }
         vm.next_step();
@@ -149,9 +159,10 @@ impl Operations {
     pub fn mul_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_mul(*r.add(src) as i64)) as u64;
         }
         vm.next_step();
@@ -163,9 +174,9 @@ impl Operations {
     pub fn mul_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_mul(imm as i64)) as u64;
         }
         vm.next_step();
@@ -177,9 +188,10 @@ impl Operations {
     pub fn div_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = *r.add(dst) / *r.add(src);
         }
         vm.next_step();
@@ -191,9 +203,10 @@ impl Operations {
     pub fn div_u64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
+            
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = (*r.add(dst)) / imm;
         }
         vm.next_step();
@@ -205,9 +218,9 @@ impl Operations {
     pub fn div_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (*r.add(dst) as i64 / *r.add(src) as i64) as u64;
         }
         vm.next_step();
@@ -219,9 +232,9 @@ impl Operations {
     pub fn div_i64_immediate(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let dst = ol[0] as usize;
             let imm = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
-            let dst = ol[0] as usize;
             *r.add(dst) = (*r.add(dst) as i64 / imm as i64) as u64;
         }
         vm.next_step();
@@ -233,9 +246,9 @@ impl Operations {
     pub fn abs(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (*r.add(src) as i64).wrapping_abs() as u64;
         }
         vm.next_step();
@@ -247,9 +260,9 @@ impl Operations {
     pub fn mod_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = ((*r.add(dst) as i64).wrapping_rem(*r.add(src) as i64)) as u64;
         }
         vm.next_step();
@@ -261,9 +274,9 @@ impl Operations {
     pub fn neg_i64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = (-(*r.add(src) as i64)).wrapping_abs() as u64;
         }
         vm.next_step();
@@ -275,9 +288,9 @@ impl Operations {
     pub fn u64_to_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = f64::to_bits(*r.add(src) as u64 as f64);
         }
         vm.next_step();
@@ -289,9 +302,9 @@ impl Operations {
     pub fn i64_to_f64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let r = vm.st.r.as_mut_ptr();
             let dst = ol[0] as usize;
             let src = ol[1] as usize;
+            let r = vm.st.r.as_mut_ptr();
             *r.add(dst) = f64::to_bits(*r.add(src) as i64 as f64);
         }
         vm.next_step();

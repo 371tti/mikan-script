@@ -63,8 +63,8 @@ impl Instruction {
 
     /// オペランドとして取得します
     #[inline(always)]
-    pub fn as_ol(&self) -> [u8; 8] {
-        self.code
+    pub fn as_ol(&self) -> &[u8; 8] {
+        &self.code
     }
 
     /// 即値オペランドとして取得します

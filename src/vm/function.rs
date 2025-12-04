@@ -22,10 +22,10 @@ impl Function {
         self.instructions.len()
     }
 
+    #[inline(always)]
     pub fn get(&self, index: usize) -> &Instruction {
         unsafe {
-            let ptr = self.instructions.as_ptr().add(index);
-            &*ptr
+            self.instructions.get_unchecked(index)
         }
     }
 }

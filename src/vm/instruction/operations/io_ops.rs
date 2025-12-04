@@ -10,8 +10,9 @@ impl Operations {
     pub fn print_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let src = ol[0] as usize;
             let r = vm.st.r.as_mut_ptr();
-            println!("{}", *r.add(ol[0] as usize));
+            println!("{}", *r.add(src));
         }
         vm.next_step();
     }
@@ -25,9 +26,9 @@ impl Operations {
     pub fn alloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
-            let add_size = vm.next_operand_imm();
             let size_reg = ol[0] as usize;
             let id_res_reg = ol[1] as usize;
+            let add_size = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
             let size = (*r.add(size_reg)).wrapping_add(add_size) as usize;
             let id = vm.st.mem.alloc_heep(size);
@@ -44,9 +45,11 @@ impl Operations {
     pub fn realloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let size_reg = ol[0] as usize;
+            let id_reg = ol[1] as usize;
             let r = vm.st.r.as_mut_ptr();
-            let size = *r.add(ol[0] as usize) as usize;
-            let id = *r.add(ol[1] as usize);
+            let size = *r.add(size_reg) as usize;
+            let id = *r.add(id_reg);
             vm.st.mem.realloc_heep(id, size);
         }
         vm.next_step();
@@ -59,8 +62,9 @@ impl Operations {
     pub fn dealloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
+            let id_reg = ol[0] as usize;
             let r = vm.st.r.as_mut_ptr();
-            let id = *r.add(ol[0] as usize);
+            let id = *r.add(id_reg);
             vm.st.mem.dealloc_heep(id);
         }
         vm.next_step();

@@ -80,7 +80,7 @@ impl VM {
             }
         }
 
-        
+
     }
 
     /// 現在の命令を読み取ります
@@ -91,7 +91,7 @@ impl VM {
 
     /// 次のオペランドを読み取ります
     #[inline(always)]
-    pub fn next_operand(&mut self) -> [u8; 8] {
+    pub fn next_operand(&mut self) -> &[u8; 8] {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
         }

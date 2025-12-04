@@ -9,8 +9,8 @@ impl Operations {
     #[inline(always)]
     pub fn jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let dst = ol[0] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             vm.st.pc = (*r.add(dst)).wrapping_add(offset) as usize;
@@ -25,10 +25,10 @@ impl Operations {
     #[inline(always)]
     pub fn eq_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -48,10 +48,10 @@ impl Operations {
     #[inline(always)]
     pub fn neq_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -71,10 +71,10 @@ impl Operations {
     #[inline(always)]
     pub fn lt_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -94,10 +94,10 @@ impl Operations {
     #[inline(always)]
     pub fn lte_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -117,10 +117,10 @@ impl Operations {
     #[inline(always)]
     pub fn lt_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -140,10 +140,10 @@ impl Operations {
     #[inline(always)]
     pub fn lte_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -163,10 +163,10 @@ impl Operations {
     #[inline(always)]
     pub fn gt_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -186,10 +186,10 @@ impl Operations {
     #[inline(always)]
     pub fn gte_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -209,10 +209,10 @@ impl Operations {
     #[inline(always)]
     pub fn gt_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
@@ -232,10 +232,10 @@ impl Operations {
     #[inline(always)]
     pub fn gte_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
-        let offset = vm.next_operand_imm();
         let addr_reg = ol[0] as usize;
         let a = ol[1] as usize;
         let b = ol[2] as usize;
+        let offset = vm.next_operand_imm();
         unsafe {
             let r = vm.st.r.as_mut_ptr();
             let addr = (*r.add(addr_reg)).wrapping_add(offset) as usize;
