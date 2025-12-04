@@ -54,21 +54,20 @@ impl Instruction {
     }
 
     /// 関数ポインタとして取得します
-    #[inline(always)]
+    // #[inline(always)]
     pub fn as_fn(&self) -> Op {
-        let ptr = u64::from_le_bytes(self.code) as usize as *const ();
-        let func: Op = unsafe { std::mem::transmute(ptr) };
-        func
+        let addr = u64::from_ne_bytes(self.code);
+        unsafe { std::mem::transmute(addr) }
     }
 
     /// オペランドとして取得します
-    #[inline(always)]
+    // #[inline(always)]
     pub fn as_ol(&self) -> &[u8; 8] {
         &self.code
     }
 
     /// 即値オペランドとして取得します
-    #[inline(always)]
+    // #[inline(always)]
     pub fn as_imm(&self) -> u64 {
         u64::from_ne_bytes(self.code)
     }

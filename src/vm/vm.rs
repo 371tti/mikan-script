@@ -6,7 +6,7 @@ const REGISTER_NUM: usize = 256;
 
 /// Direct-threaded VM
 /// 関数ポインタ配列から命令を実行し続ける状態機械
-///
+#[repr(align(64))]
 pub struct VM {
     /// VMの状態
     pub st: VMState,
@@ -44,6 +44,7 @@ impl VM {
     }
 
     /// 指定の関数を実行します
+    // #[inline(always)]
     pub fn run(&mut self) {
         // コードマネージャから関数テーブルを取得
         self.function_table = self.cm.get_decoded();
@@ -84,13 +85,13 @@ impl VM {
     }
 
     /// 現在の命令を読み取ります
-    #[inline(always)]
+    // #[inline(always)]
     pub fn read_instruction(&mut self) -> &Instruction {
         &self.st.now_function_ptr.get(self.st.pc)
     }
 
     /// 次のオペランドを読み取ります
-    #[inline(always)]
+    // #[inline(always)]
     pub fn next_operand(&mut self) -> &[u8; 8] {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
@@ -99,7 +100,7 @@ impl VM {
     }
 
     /// 次の即値オペランドを読み取ります
-    #[inline(always)]
+    // #[inline(always)]
     pub fn next_operand_imm(&mut self) -> u64 {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
@@ -108,7 +109,7 @@ impl VM {
     }
 
     /// 次のステップに進みます
-    #[inline(always)]
+    // #[inline(always)]
     pub fn next_step(&mut self) {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
@@ -117,6 +118,7 @@ impl VM {
 }
 
 /// VMの状態を保持する構造体
+#[repr(align(64))]
 pub struct VMState {
     /// 汎用レジスタ
     /// r0 : 0x000000 固定値レジスタ

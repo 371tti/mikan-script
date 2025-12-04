@@ -13,7 +13,7 @@ impl Function {
         Function { instructions: Pin::new(instructions) }
     }
 
-    #[inline(always)]
+    // #[inline(always)]
     pub fn pinned_ptr(&self) -> FunctionPtr {
         FunctionPtr(self as *const Function)
     }
@@ -22,7 +22,7 @@ impl Function {
         self.instructions.len()
     }
 
-    #[inline(always)]
+    // #[inline(always)]
     pub fn get(&self, index: usize) -> &Instruction {
         unsafe {
             self.instructions.get_unchecked(index)
@@ -36,7 +36,7 @@ pub struct FunctionPtr(pub *const Function);
 impl Deref for FunctionPtr {
     type Target = Function;
 
-    #[inline(always)]
+    // #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.0 }
     }

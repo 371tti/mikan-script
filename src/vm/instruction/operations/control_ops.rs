@@ -6,7 +6,7 @@ impl Operations {
     /// ジャンプ
     /// ol[0]: dst register index
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let dst = ol[0] as usize;
@@ -22,7 +22,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn eq_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -45,7 +45,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn neq_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -68,7 +68,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn lt_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -91,7 +91,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn lte_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -114,7 +114,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn lt_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -137,7 +137,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn lte_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -160,7 +160,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn gt_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -183,7 +183,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn gte_u64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -206,7 +206,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn gt_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -229,7 +229,7 @@ impl Operations {
     /// ol[1]: a
     /// ol[2]: b
     /// oh: immediate offset
-    #[inline(always)]
+    // #[inline(always)]
     pub fn gte_i64_jump(vm: &mut VM) {
         let ol = vm.next_operand();
         let addr_reg = ol[0] as usize;
@@ -250,7 +250,7 @@ impl Operations {
     /// 関数呼び出し
     /// call func_index
     /// set pc ( 普通は関数先頭アドレスで0 )
-    #[inline(always)]
+    // #[inline(always)]
     pub fn call(vm: &mut VM) {
         let func_index = vm.next_operand_imm();
         let pc = vm.next_operand_imm();
@@ -263,7 +263,7 @@ impl Operations {
 
     /// 関数リターン
     /// ret
-    #[inline(always)]
+    // #[inline(always)]
     pub fn ret(vm: &mut VM) {
         vm.st.now_call_index = vm.st.call_stack.pop().expect("Call stack underflow on return");
         vm.st.pc = vm.st.call_stack.pop().unwrap();

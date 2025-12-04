@@ -6,7 +6,7 @@ impl Operations {
     /// LocalDecodedByteCodeの更新
     /// 呼び出された場合CodeManagerにデコードを依頼し、VMのFuctionTableを更新します
     /// Code Manager は未デコードのfunctionをこれに置き換えます。
-    #[inline(always)]
+    // #[inline(always)]
     pub fn get_decode(vm: &mut VM) {
         let decode_id = vm.next_operand_imm();
         let deep = vm.next_operand_imm();
@@ -15,7 +15,7 @@ impl Operations {
     }
 
     /// 最新のデコード済みByteCodeを取得
-    #[inline(always)]
+    // #[inline(always)]
     pub fn get_decoded(vm: &mut VM) {
         vm.function_table = vm.cm.get_decoded();
         vm.next_step();
@@ -24,7 +24,7 @@ impl Operations {
     
     /// プログラム終了
     /// exit with code *code_reg
-    #[inline(always)]
+    // #[inline(always)]
     pub fn exit(vm: &mut VM) {
         let code = vm.next_operand_imm() as u64;
         // update VM state before actually exiting so any tooling or profiling

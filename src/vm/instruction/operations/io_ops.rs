@@ -6,7 +6,7 @@ impl Operations {
     /// 整数の出力
     /// 2 word instruction
     /// ol[0]: src register index
-    #[inline(always)]
+    // #[inline(always)]
     pub fn print_u64(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -22,7 +22,7 @@ impl Operations {
     /// ol[0]: size reg
     /// ol[1]: id res reg
     /// oh: immediate add_size
-    #[inline(always)]
+    // #[inline(always)]
     pub fn alloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -41,7 +41,7 @@ impl Operations {
     /// 2 word instruction
     /// ol[0]: size reg
     /// ol[1]: id reg
-    #[inline(always)]
+    // #[inline(always)]
     pub fn realloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
@@ -58,7 +58,7 @@ impl Operations {
     /// deallocate memory
     /// 2 word instruction
     /// ol[0]: id reg
-    #[inline(always)]
+    // #[inline(always)]
     pub fn dealloc(vm: &mut VM) {
         unsafe {
             let ol = vm.next_operand();
