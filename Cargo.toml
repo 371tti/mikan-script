@@ -7,6 +7,12 @@ edition = "2024"
 core_affinity = "0.8.3"
 rustc-hash = "2.1.1"
 
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_System_IO",
+] }
+
+
 
 [profile.release]
 # 高速化・デバッグ最小化設定

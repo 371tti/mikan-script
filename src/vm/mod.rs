@@ -10,6 +10,7 @@ pub mod instruction;
 pub mod pre_decoder;
 pub mod vm;
 pub mod function;
+// pub mod io;
 
 pub struct VMPool {
     pub vm_num: u64,
