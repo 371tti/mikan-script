@@ -85,13 +85,13 @@ impl VM {
     }
 
     /// 現在の命令を読み取ります
-    // #[inline(always)]
+    #[inline(always)]
     pub fn read_instruction(&mut self) -> &Instruction {
         &self.st.now_function_ptr.get(self.st.pc)
     }
 
     /// 次のオペランドを読み取ります
-    // #[inline(always)]
+    #[inline(always)]
     pub fn next_operand(&mut self) -> &[u8; 8] {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
@@ -100,7 +100,7 @@ impl VM {
     }
 
     /// 次の即値オペランドを読み取ります
-    // #[inline(always)]
+    #[inline(always)]
     pub fn next_operand_imm(&mut self) -> u64 {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
@@ -109,7 +109,7 @@ impl VM {
     }
 
     /// 次のステップに進みます
-    // #[inline(always)]
+    #[inline(always)]
     pub fn next_step(&mut self) {
         unsafe {
             self.st.pc = self.st.pc.unchecked_add(1)
