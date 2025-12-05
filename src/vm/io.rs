@@ -1,5 +1,9 @@
 use std::{collections::{HashMap, VecDeque}, sync::Arc};
 
+use windows::Win32::{
+    Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE}, Storage::FileSystem::WriteFile, System::{Console::{GetStdHandle, STD_OUTPUT_HANDLE}, IO::{CreateIoCompletionPort, GetQueuedCompletionStatus, OVERLAPPED}}
+};
+
 pub type IoId = u32;  // ソケット/ファイルなどのハンドル
 pub type FuId = u64;  // Future ID
 
@@ -165,11 +169,7 @@ pub trait Reactor {
     fn cancel(&self, fu_id: FuId) -> std::io::Result<()>;
 }
 
-use windows::Win32::{
-    Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE}, Storage::FileSystem::WriteFile, System::{Console::{GetStdHandle, STD_OUTPUT_HANDLE}, IO::{CreateIoCompletionPort, GetQueuedCompletionStatus, OVERLAPPED}}
-};
 
-use crate::vm::instruction::Op;
 
 /// For Windows IOCP
 pub struct IocpReactor {
