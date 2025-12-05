@@ -24,25 +24,44 @@
 //     pool.wait_all();
 // }
 
-use mikan_script::vm::io::{IoEngine, IocpReactor, IoOp, Reactor};
+use std::time::Instant;
+
+use mikan_script::vm::io::{IoEngine, IoOp, windows::IocpReactor};
 
 fn main() {
-    // テスト文字列
-    let msg = b"Async Hello, World! by IOCP!\n";
-    let buf_ptr = msg.as_ptr() as u64;
-    let len = msg.len() as u64;
 
-    // IOCPリアクター生成
-    let reactor = IocpReactor::new().unwrap();
-    let mut engine = IoEngine::new(reactor);
+    println!("== Async stdin test (IoEngine / StdinRead) ==");
 
-    // 非同期標準出力リクエスト
-    let fu_id = engine.submit_op(IoOp::StdoutWrite { buf_ptr, len });
+    // IOエンジンとリアクターの初期化
+    let mut engine = IoEngine::<IocpReactor>::new();
 
+    // 読み取り用バッファを用意（コンソールなら実質同期なので stack / Vec でも一応動く）
+    let mut buf = vec![0u8; 1024];
+    let buf_ptr = buf.as_mut_ptr() as u64;
+    let len = buf.len() as u64;
+
+    let async_start = Instant::now();
+
+    // 非同期標準入力リクエストを1回投げる
+    engine.submit_op(IoOp::StdinRead { buf_ptr, len });
+    println!("{}", engine.events_holed_os());
     // 完了イベント待ち
-    if let Some((done_fu_id, result)) = engine.wait_a_event(1000000) {
-        println!("fu_id={} completed: {:?}", done_fu_id, result);
-    } else {
-        println!("タイムアウトまたは失敗");
+    while 0 != engine.events_holed_os() {
+            println!("eee");
+        // timeout_ms や max_events は stdout と同じノリで
+        engine.blocking_collect_events(100, 1024);
     }
+
+    let async_duration = async_start.elapsed();
+
+    // ここまで来た時点で buf に読み取ったデータが入っている想定
+    // ヌル文字は入らないので、実際の長さだけを見つけてから String に変換する
+    let read_len = buf.iter()
+        .position(|&b| b == b'\n' || b == 0)
+        .unwrap_or(buf.len());
+
+    let line = String::from_utf8_lossy(&buf[..read_len]);
+
+    println!("非同期ランタイム経由で読み取った内容: {:?}", line.trim_end());
+    println!("Asynchronous stdin read took: {:?}", async_duration);
 }

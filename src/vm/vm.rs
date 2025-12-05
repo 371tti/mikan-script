@@ -1,8 +1,11 @@
 use std::path::PathBuf;
 
-use crate::vm::{code_manager::CodeManager, function::FunctionPtr, instruction::Instruction, memory::Memory};
+use crate::vm::{code_manager::CodeManager, function::FunctionPtr, instruction::Instruction, io::{IoEngine, windows::IocpReactor}, memory::Memory};
 
 const REGISTER_NUM: usize = 256;
+
+#[cfg(target_os = "windows")]
+type PrimaryReactor = IocpReactor;
 
 /// Direct-threaded VM
 /// 関数ポインタ配列から命令を実行し続ける状態機械
@@ -17,6 +20,8 @@ pub struct VM {
     pub cm: CodeManager,
     /// VMのID
     pub vm_id: u64,
+    /// IOエンジン
+    pub io: IoEngine<PrimaryReactor>,
 }
 
 impl VM {
@@ -26,6 +31,7 @@ impl VM {
             function_table: Box::new([]),
             cm: CodeManager::new("none".into()),
             vm_id: 0,
+            io: IoEngine::<PrimaryReactor>::new(),
         }
     }
 
