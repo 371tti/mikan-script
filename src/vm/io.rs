@@ -111,15 +111,29 @@ impl<R: Reactor> IoEngine<R> {
         id
     }
 
-    pub fn submit_op(&mut self, op: IoOp) -> FuId {
+    pub fn submit_op(&mut self, op: IoOp) -> std::io::Result<FuId> {
         let fu_id = self.alloc_fu();
-        self.reactor.submit(fu_id, &op).unwrap(); // エラーハンドリングは後で
-        self.futures.insert(fu_id, IoFutureState::Pending(op));
-        fu_id
+        let option_result = self.reactor.submit(fu_id, &op)?;
+        if let Some(result) = option_result {
+            self.futures.insert(fu_id, IoFutureState::Completed(result));
+            self.completed.push_back(fu_id);
+        } else {
+            self.futures.insert(fu_id, IoFutureState::Pending(op));
+        }
+        Ok(fu_id)
     }
 
     pub fn wait_a_event(&mut self, timeout_ms: i64) -> Option<(FuId, IoResult)> {
+        if let Some(fu_id) = self.completed.pop_front() {
+            if let Some(state) = self.futures.get_mut(&fu_id) {
+                if let IoFutureState::Completed(result) = state {
+                    return Some((fu_id, result.clone()));
+                }
+            }
+        }
+
         let mut events = Vec::new();
+        // ここでblocking
         self.reactor.wait(timeout_ms, 1, &mut events).unwrap(); // エラーハンドリングは後で
 
         for (fu_id, result) in events {
@@ -136,7 +150,7 @@ impl<R: Reactor> IoEngine<R> {
 
 pub trait Reactor {
     /// fu_id と IoOp を受け取って OS に投げる
-    fn submit(&self, fu_id: FuId, op: &IoOp) -> std::io::Result<()>;
+    fn submit(&self, fu_id: FuId, op: &IoOp) -> std::io::Result<Option<IoResult>>;
 
     /// 完了イベントを最大 max_events 個まで取得
     /// timeout_ms が負の場合は無限に待機
@@ -154,6 +168,8 @@ pub trait Reactor {
 use windows::Win32::{
     Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE}, Storage::FileSystem::WriteFile, System::{Console::{GetStdHandle, STD_OUTPUT_HANDLE}, IO::{CreateIoCompletionPort, GetQueuedCompletionStatus, OVERLAPPED}}
 };
+
+use crate::vm::instruction::Op;
 
 /// For Windows IOCP
 pub struct IocpReactor {
@@ -196,7 +212,7 @@ impl Drop for IocpReactor {
 
 
 impl Reactor for IocpReactor {
-    fn submit(&self, fu_id: FuId, op: &IoOp) -> std::io::Result<()> {
+    fn submit(&self, fu_id: FuId, op: &IoOp) -> std::io::Result<Option<IoResult>> {
         match op {
             IoOp::StdoutWrite { buf_ptr, len } => {
                 unsafe {
@@ -222,9 +238,17 @@ impl Reactor for IocpReactor {
                     );
 
                     // WriteFile は完了前に false を返すことがあるが、ERROR_IO_PENDING なら正常
-                    if res.is_ok() || windows::Win32::Foundation::GetLastError().0 == 997 {
-                        // 成功または非同期進行中
-                        Ok(())
+                    if res.is_ok() {
+                        // 即時終了
+                        Ok(Some(
+                            IoResult::StreamIo {
+                                len: written as u64,
+                                status: 0,
+                            }
+                        ))
+                    } else if windows::Win32::Foundation::GetLastError().0 == 997 {
+                        // 非同期進行中
+                        Ok(None)
                     } else {
                         Err(std::io::Error::last_os_error())
                     }
@@ -244,6 +268,8 @@ impl Reactor for IocpReactor {
             let timeout = if timeout_ms < 0 { u32::MAX } else { timeout_ms as u32 };
             let mut events = 0;
 
+            println!("waiting IOCP events...");
+
             while events < max_events {
                 let mut bytes_transferred = 0u32;
                 let mut completion_key = 0usize;
@@ -256,6 +282,8 @@ impl Reactor for IocpReactor {
                     &mut overlapped_ptr,
                     if events == 0 { timeout } else { 0 }, // 最初だけタイムアウト適用
                 );
+
+                println!("IOCP event received: ok={:?}, bytes_transferred={}, completion_key={}, overlapped_ptr={:?}", ok, bytes_transferred, completion_key, overlapped_ptr);
 
                 if ok.is_ok() && !overlapped_ptr.is_null() {
                     out.push((

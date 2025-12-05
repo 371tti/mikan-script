@@ -28,7 +28,7 @@ use mikan_script::vm::io::{IoEngine, IocpReactor, IoOp, Reactor};
 
 fn main() {
     // テスト文字列
-    let msg = b"Hello, IOCP!\n";
+    let msg = b"Async Hello, World! by IOCP!\n";
     let buf_ptr = msg.as_ptr() as u64;
     let len = msg.len() as u64;
 
@@ -40,8 +40,8 @@ fn main() {
     let fu_id = engine.submit_op(IoOp::StdoutWrite { buf_ptr, len });
 
     // 完了イベント待ち
-    if let Some((done_fu_id, result)) = engine.wait_a_event(1000) {
-        println!("fu_id={} 完了: {:?}", done_fu_id, result);
+    if let Some((done_fu_id, result)) = engine.wait_a_event(1000000) {
+        println!("fu_id={} completed: {:?}", done_fu_id, result);
     } else {
         println!("タイムアウトまたは失敗");
     }
