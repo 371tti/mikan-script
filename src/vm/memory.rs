@@ -4,6 +4,45 @@ use std::{
     ptr::NonNull,
 };
 
+/// 仮想ポインタ
+/// 上位24bit: heep id
+/// 下位40bit: heep内オフセット
+#[repr(transparent)]
+pub struct VPtr(pub u64);
+
+impl VPtr {
+    #[inline(always)]
+    pub fn from_heep_id(id: usize) -> Self {
+        VPtr((id as u64) << 40)
+    }
+
+    #[inline(always)]
+    pub fn heep_id(&self) -> usize {
+        (self.0 >> 40) as usize
+    }
+
+    #[inline(always)]
+    pub fn offset(&self) -> usize {
+        (self.0 & 0x0000_00FF_FFFF_FFFF) as usize
+    }
+}
+
+impl From<u64> for VPtr {
+    #[inline(always)]
+    fn from(v: u64) -> Self {
+        VPtr(v)
+    }
+}
+
+impl Deref for VPtr {
+    type Target = u64;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// 仮想メモリ
 #[derive(Clone, Debug)]
 pub struct Memory {
@@ -21,41 +60,44 @@ impl Memory {
 
     /// 新しいHeepとそのid
     #[inline(always)]
-    pub fn alloc_heep(&mut self, size: usize) -> u64 {
+    pub fn alloc_heep(&mut self, size: usize) -> VPtr {
         if let Some(id) = self.reuse_list.pop() {
             let heep = &self.data[id as usize];
             heep.alloc(size);
-            return id as u64;
+            return VPtr::from_heep_id(id);
         } else {
-            let id = self.data.len() as u64;
+            let id = self.data.len();
             let heep = Heep::new(size);
             self.data.push(heep);
-            return id;
+            return VPtr::from_heep_id(id);
         }
     }
 
+    /// サイズ再確保
     #[inline(always)]
-    pub fn realloc_heep(&mut self, id: u64, new_size: usize) {
-        if let Some(heep) = self.data.get(id as usize) {
+    pub fn realloc_heep(&mut self, ptr: VPtr, new_size: usize) {
+        if let Some(heep) = self.data.get(ptr.heep_id() as usize) {
             heep.realloc(new_size);
         } else {
             std::process::exit(-9998);
         }
     }
 
+    /// 解放
     #[inline(always)]
-    pub fn dealloc_heep(&mut self, id: u64) {
-        if let Some(heep) = self.data.get(id as usize) {
+    pub fn dealloc_heep(&mut self, ptr: VPtr) {
+        if let Some(heep) = self.data.get(ptr.heep_id() as usize) {
             heep.dealloc();
-            self.reuse_list.push(id as usize);
+            self.reuse_list.push(ptr.heep_id() as usize);
         } else {
             std::process::exit(-9998);
         }
     }
 
+    /// 実ポインタへ変換
     #[inline(always)]
-    pub fn head_ptr(&self, id: u64) -> usize {
-        if let Some(heep) = self.data.get(id as usize) {
+    pub fn as_ptr(&self, ptr: VPtr) -> *mut u8 {
+        if let Some(heep) = self.data.get(ptr.heep_id() as usize) {
             let ptr = heep.ptr();
             ptr
         } else {
@@ -63,6 +105,7 @@ impl Memory {
         }
     }
 
+    /// 全Heepの合計サイズを取得
     pub fn total_memory_size(&self) -> usize {
         let mut total_size = 0;
         for heep in &self.data {
@@ -83,11 +126,6 @@ impl Heep {
         Heep {
             raw: RawHeep::new(size),
         }
-    }
-
-    #[inline(always)]
-    pub fn ptr(&self) -> usize {
-        self.raw.ptr() as usize
     }
 }
 

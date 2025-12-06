@@ -85,8 +85,10 @@ pub enum IoOp {
         /// IP address pointer
         /// IPv4 -> 4 bytes, IPv6 -> 16 bytes
         /// not force align
+        /// native-endian byte order
         ip_ptr: u64,
         /// port number 0-65535
+        /// native-endian byte order
         port: u16,
         /// features flags
         flags: TcpListenFlags,
@@ -97,8 +99,10 @@ pub enum IoOp {
         /// IP address pointer
         /// IPv4 -> 4 bytes, IPv6 -> 16 bytes
         /// not force align
+        /// native-endian byte order
         ip_ptr: u64,
         /// port number 0-65535
+        /// native-endian byte order
         port: u16,
         /// backlog
         backlog: u16,
@@ -181,7 +185,7 @@ pub struct Event {
 impl<R: Reactor> IoEngine<R> {
     pub fn new() -> Self {
         IoEngine {
-            next_fu: 0,
+            next_fu: 1,
             futures: HashMap::new(),
             completed: VecDeque::new(),
             reactor: R::new().unwrap(),
@@ -230,7 +234,7 @@ impl<R: Reactor> IoEngine<R> {
         None
     }
 
-    /// 完了イベントを最大 max_events 個まで収集する（ブロッキング）
+    /// 完了イベントをOSから最大 max_events 個まで収集する（ブロッキング）
     /// timeout_ms が負の場合は無限に待機
     pub fn blocking_collect_events(&mut self, timeout_ms: i64, max_events: usize) -> usize {
         let mut events = Vec::with_capacity(max_events);

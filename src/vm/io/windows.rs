@@ -1,3 +1,6 @@
+// クソこーd－
+// win32 の IOCP を使った Reactor 実装
+// あああああああああああああああああああああああああああああああああああああああああああああ
 
 
 use core::ffi::c_void;
@@ -8,9 +11,9 @@ use windows::{
             CloseHandle, ERROR_IO_PENDING, GetLastError, HANDLE, INVALID_HANDLE_VALUE
         },
         Networking::WinSock::{
-            AF_INET, IPPROTO_TCP, LPFN_ACCEPTEX, SIO_GET_EXTENSION_FUNCTION_POINTER, SO_REUSEADDR, SOCK_STREAM, SOCKADDR_IN, SOCKET, SOCKET_ERROR, SOL_SOCKET, WSA_FLAG_OVERLAPPED, WSA_IO_PENDING, WSADATA, WSAGetLastError, WSAID_ACCEPTEX, WSAIoctl, WSASocketW, WSAStartup, bind, closesocket, listen, setsockopt
+            AF_INET, IPPROTO_TCP, LPFN_ACCEPTEX, LPFN_CONNECTEX, SIO_GET_EXTENSION_FUNCTION_POINTER, SO_REUSEADDR, SO_UPDATE_ACCEPT_CONTEXT, SO_UPDATE_CONNECT_CONTEXT, SOCK_STREAM, SOCKADDR_IN, SOCKET, SOCKET_ERROR, SOL_SOCKET, WSA_FLAG_OVERLAPPED, WSA_IO_PENDING, WSADATA, WSAGetLastError, WSAID_ACCEPTEX, WSAID_CONNECTEX, WSAIoctl, WSASocketW, WSAStartup, bind, closesocket, listen, setsockopt
         },
-        Security::Cryptography::{BCRYPT_ALG_HANDLE, BCRYPT_RNG_ALGORITHM, BCRYPT_USE_SYSTEM_PREFERRED_RNG, BCRYPTGENRANDOM_FLAGS, BCryptGenRandom, BCryptOpenAlgorithmProvider},
+        Security::Cryptography::{BCRYPT_USE_SYSTEM_PREFERRED_RNG, BCryptGenRandom},
         Storage::FileSystem::{ReadFile, WriteFile},
         System::{
             Console::{GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
@@ -22,7 +25,7 @@ use windows::{
 };
 
 use crate::vm::io::{
-    Event, FuId, IoError, IoErrorKind, IoOk, IoOp, IoResult, IoType, Reactor,
+    Event, FuId, IoError, IoErrorKind, IoOk, IoOp, IoResult, IoType, Reactor, TcpListenFlags,
 };
 
 static WSA_INIT: Once = Once::new();
@@ -60,10 +63,10 @@ fn ensure_wsa_initialized() -> std::io::Result<()> {
 /// - TcpAccept (IPv4 only)
 /// - TimeNow
 /// - RandomBytes
-/// 
-/// 未チェック
-/// - TcpConnect
 /// - Shutdown
+/// - TcpConnect
+/// 
+/// windowsのWinsockはipはネイティブエンディアン、portはビッグエンディアンで扱う必要がある(はああああ)
 #[derive(Debug)]
 pub struct IocpReactor {
     iocp: HANDLE,
@@ -97,6 +100,9 @@ struct IocpCtx {
     /// TcpAccept で使う accepted socket
     socket: Option<SOCKET>,
 
+    /// AcceptSocketを開放するためのアドレスバッファ
+    listener: Option<SOCKET>,
+
     /// AcceptEx 用のアドレスバッファ
     addr_buf: Option<Box<[u8]>>,
 }
@@ -109,6 +115,7 @@ impl IocpCtx {
             io_type,
             iocp,
             socket: None,
+            listener: None,
             addr_buf: None,
         })
     }
@@ -133,9 +140,7 @@ impl Reactor for IocpReactor {
 
     fn submit(&self, fu_id: FuId, op: &IoOp) -> IoResult {
         match op {
-            // -----------------------------
             // 標準出力
-            // -----------------------------
             IoOp::StdoutWrite { buf_ptr, len } => {
                 unsafe {
                     let stdout = match GetStdHandle(STD_OUTPUT_HANDLE) {
@@ -151,7 +156,8 @@ impl Reactor for IocpReactor {
 
                     let buf = slice::from_raw_parts(*buf_ptr as *const u8, *len as usize);
 
-                    let mut ctx = IocpCtx::new_basic(fu_id, IoType::StdoutWrite, self.iocp);
+                    let ctx = IocpCtx::new_basic(fu_id, IoType::StdoutWrite, self.iocp);
+                    let ctx_ptr = Box::into_raw(ctx);
 
                     // IOCP 関連付け
                     let _ = CreateIoCompletionPort(stdout, Some(self.iocp), 0, 0);
@@ -161,19 +167,20 @@ impl Reactor for IocpReactor {
                         stdout,
                         Some(buf),
                         Some(&mut written),
-                        Some(&mut ctx.overlapped as *mut OVERLAPPED),
+                        Some(&mut (*ctx_ptr).overlapped as *mut OVERLAPPED),
                     );
 
                     if res.is_ok() {
-                        // 即時完了
-                        IoResult::Ok(IoOk::StreamIo { len: written as u64 })
+                        // ctx は IOCP 側で Box::from_raw されるまで保持
+                        IoResult::Pending
                     } else {
                         let err = GetLastError();
                         if err == ERROR_IO_PENDING {
                             // 非同期進行中 → ctx をリーク（完了時に回収）
-                            std::mem::forget(ctx);
                             IoResult::Pending
                         } else {
+                            // エラー → ここで ctx を回収
+                            let _ = Box::from_raw(ctx_ptr);
                             IoResult::Err(IoError {
                                 kind: IoErrorKind::Other,
                                 raw_os_error: err.0 as i32,
@@ -184,9 +191,7 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
             // 標準入力
-            // -----------------------------
             IoOp::StdinRead { buf_ptr, len } => unsafe {
                 let stdin = match GetStdHandle(STD_INPUT_HANDLE) {
                     Ok(h) => h,
@@ -201,7 +206,8 @@ impl Reactor for IocpReactor {
 
                 let buf = slice::from_raw_parts_mut(*buf_ptr as *mut u8, *len as usize);
 
-                let mut ctx = IocpCtx::new_basic(fu_id, IoType::StdinRead, self.iocp);
+                let ctx = IocpCtx::new_basic(fu_id, IoType::StdinRead, self.iocp);
+                let ctx_ptr = Box::into_raw(ctx);
 
                 let _ = CreateIoCompletionPort(stdin, Some(self.iocp), 0, 0);
 
@@ -210,17 +216,19 @@ impl Reactor for IocpReactor {
                     stdin,
                     Some(buf),
                     Some(&mut read),
-                    Some(&mut ctx.overlapped as *mut OVERLAPPED),
+                    Some(&mut (*ctx_ptr).overlapped as *mut OVERLAPPED),
                 );
 
                 if res.is_ok() {
-                    IoResult::Ok(IoOk::StreamIo { len: read as u64 })
+                    // ctx は IOCP 側で Box::from_raw されるまで保持
+                    IoResult::Pending
                 } else {
                     let err = GetLastError();
                     if err == ERROR_IO_PENDING {
-                        std::mem::forget(ctx);
                         IoResult::Pending
                     } else {
+                        // エラー → ここで ctx を回収
+                        let _ = Box::from_raw(ctx_ptr);
                         IoResult::Err(IoError {
                             kind: IoErrorKind::Other,
                             raw_os_error: err.0 as i32,
@@ -230,14 +238,13 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
             // 汎用 Read (ファイルハンドル想定)
-            // -----------------------------
             IoOp::Read { handle, buf_ptr, len } => unsafe {
                 let h = HANDLE(*handle as *mut c_void);
                 let buf = slice::from_raw_parts_mut(*buf_ptr as *mut u8, *len as usize);
 
-                let mut ctx = IocpCtx::new_basic(fu_id, IoType::Read, self.iocp);
+                let ctx = IocpCtx::new_basic(fu_id, IoType::Read, self.iocp);
+                let ctx_ptr = Box::into_raw(ctx);
                 let _ = CreateIoCompletionPort(h, Some(self.iocp), 0, 0);
 
                 let mut read = 0u32;
@@ -245,17 +252,19 @@ impl Reactor for IocpReactor {
                     h,
                     Some(buf),
                     Some(&mut read),
-                    Some(&mut ctx.overlapped as *mut OVERLAPPED),
+                    Some(&mut (*ctx_ptr).overlapped as *mut OVERLAPPED),
                 );
 
                 if res.is_ok() {
-                    IoResult::Ok(IoOk::StreamIo { len: read as u64 })
+                    // ctx は IOCP 側で Box::from_raw されるまで保持
+                    IoResult::Pending
                 } else {
                     let err = GetLastError();
                     if err == ERROR_IO_PENDING {
-                        std::mem::forget(ctx);
                         IoResult::Pending
                     } else {
+                        // エラー → ここで ctx を回収
+                        let _ = Box::from_raw(ctx_ptr);
                         IoResult::Err(IoError {
                             kind: IoErrorKind::Other,
                             raw_os_error: err.0 as i32,
@@ -265,14 +274,16 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
             // 汎用 Write (ファイルハンドル想定)
-            // -----------------------------
             IoOp::Write { handle, buf_ptr, len } => unsafe {
                 let h = HANDLE(*handle as *mut c_void);
                 let buf = slice::from_raw_parts(*buf_ptr as *const u8, *len as usize);
 
-                let mut ctx = IocpCtx::new_basic(fu_id, IoType::Write, self.iocp);
+                // 1. Box<IocpCtx> を確保して into_raw する
+                let ctx = IocpCtx::new_basic(fu_id, IoType::Write, self.iocp);
+                let ctx_ptr = Box::into_raw(ctx);
+
+                // 2. IOCP に関連付け
                 let _ = CreateIoCompletionPort(h, Some(self.iocp), 0, 0);
 
                 let mut written = 0u32;
@@ -280,17 +291,20 @@ impl Reactor for IocpReactor {
                     h,
                     Some(buf),
                     Some(&mut written),
-                    Some(&mut ctx.overlapped as *mut OVERLAPPED),
+                    Some(&mut (*ctx_ptr).overlapped as *mut OVERLAPPED),
                 );
 
                 if res.is_ok() {
-                    IoResult::Ok(IoOk::StreamIo { len: written as u64 })
+                    // ctx は IOCP 側で Box::from_raw されるまで保持
+                    IoResult::Pending
                 } else {
                     let err = GetLastError();
                     if err == ERROR_IO_PENDING {
-                        std::mem::forget(ctx);
+                        // 非同期進行中 → ctx は IOCP 側で回収
                         IoResult::Pending
                     } else {
+                        // エラー → ここで ctx を回収
+                        let _ = Box::from_raw(ctx_ptr);
                         IoResult::Err(IoError {
                             kind: IoErrorKind::Other,
                             raw_os_error: err.0 as i32,
@@ -300,9 +314,8 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
+
             // Sleep (タイマキュー)
-            // -----------------------------
             IoOp::Sleep { ms } => unsafe {
                 unsafe extern "system" fn sleep_cb(param: *mut c_void, _fired: bool) {
                     let ctx = unsafe { &mut *(param as *mut IocpCtx) };
@@ -344,9 +357,7 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
             // TcpListen (IPv4 のみ)
-            // -----------------------------
             IoOp::TcpListen { ip_ptr, port, backlog, flags: _flags, family } => unsafe {
                 match family {
                     4 => {
@@ -358,7 +369,7 @@ impl Reactor for IocpReactor {
                             IPPROTO_TCP.0 as i32,
                             None,
                             0,
-                            WSA_FLAG_OVERLAPPED, // ★ 必須
+                            WSA_FLAG_OVERLAPPED, // 必須
                         ) {
                             Ok(s) => s,
                             Err(e) => {
@@ -375,8 +386,8 @@ impl Reactor for IocpReactor {
                         // INADDR_ANY テスト版（まずこれで動作確認すると良い）
                         let mut addr = SOCKADDR_IN::default();
                         addr.sin_family = AF_INET;
-                        addr.sin_port = port.to_be();
-                        addr.sin_addr.S_un.S_addr = 0;
+                        addr.sin_port = (*port).to_be(); // ネットワークバイトオーダー
+                        addr.sin_addr.S_un.S_addr = *(*ip_ptr as *const u32);
 
                         if bind(
                             sock,
@@ -425,9 +436,7 @@ impl Reactor for IocpReactor {
             }
 
 
-            // -----------------------------
             // TcpAccept (AcceptEx + IOCP)
-            // -----------------------------
             IoOp::TcpAccept { listener_handle } => unsafe {
                 let listener = SOCKET(*listener_handle as usize);
 
@@ -455,17 +464,18 @@ impl Reactor for IocpReactor {
                 const ADDR_SINGLE: usize = std::mem::size_of::<SOCKADDR_IN>() + 16;
                 const ADDR_BUF_LEN: usize = ADDR_SINGLE * 2;
 
-                let mut ctx = IocpCtx {
+                let ctx = IocpCtx {
                     overlapped: std::mem::zeroed(),
                     fu_id,
                     io_type: IoType::TcpAccept,
                     iocp: self.iocp,
                     socket: Some(accept_socket),
+                    listener: Some(listener),
                     addr_buf: Some(vec![0u8; ADDR_BUF_LEN].into_boxed_slice()),
                 };
                 let ctx_ptr: *mut IocpCtx = Box::into_raw(Box::new(ctx));
 
-                // ★ AcceptEx 関数ポインタは listener に対して取得する
+                // AcceptEx 関数ポインタは listener に対して取得する
                 let mut guid: GUID = WSAID_ACCEPTEX;
                 let mut func: LPFN_ACCEPTEX = None;
                 let mut bytes: u32 = 0;
@@ -559,9 +569,7 @@ impl Reactor for IocpReactor {
             }
 
 
-            // -----------------------------
             // 現在時刻（FILETIME そのまま返す）
-            // -----------------------------
             IoOp::TimeNow => unsafe {
                 let ft = GetSystemTimePreciseAsFileTime();
                 IoResult::Ok(IoOk::TimeNow {
@@ -570,9 +578,7 @@ impl Reactor for IocpReactor {
                 })
             }
 
-            // -----------------------------
             // 暗号学的乱数
-            // -----------------------------
             IoOp::RandomBytes { buf_ptr, len } => unsafe {
                 let buf = slice::from_raw_parts_mut(*buf_ptr as *mut u8, *len as usize);
 
@@ -593,14 +599,190 @@ impl Reactor for IocpReactor {
                 }
             }
 
-            // -----------------------------
             // TcpConnect はまだ
-            // -----------------------------
-            IoOp::TcpConnect { .. } => IoResult::Err(IoError {
-                kind: IoErrorKind::NotImplYet,
-                raw_os_error: -1,
-                retryable: false,
-            }),
+            
+            IoOp::TcpConnect { ip_ptr, port, flags, family } => unsafe {
+                match family {
+                    4 => {
+                        // 1. ソケット作成（OVERLAPPED フラグ付き）
+                        let sock = match WSASocketW(
+                            AF_INET.0 as i32,
+                            SOCK_STREAM.0 as i32,
+                            IPPROTO_TCP.0 as i32,
+                            None,
+                            0,
+                            WSA_FLAG_OVERLAPPED,
+                        ) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                return IoResult::Err(IoError {
+                                    kind: IoErrorKind::Other,
+                                    raw_os_error: e.code().0 as i32,
+                                    retryable: false,
+                                });
+                            }
+                        };
+
+                        // 2. REUSE_ADDR フラグ（必要なら）
+                        if flags.contains(TcpListenFlags::REUSE_ADDR) {
+                            let yes: i32 = 1;
+                            let yes_bytes = yes.to_ne_bytes();
+                            let ret = setsockopt(
+                                sock,
+                                SOL_SOCKET,
+                                SO_REUSEADDR,
+                                Some(&yes_bytes),
+                            );
+                            if ret == SOCKET_ERROR {
+                                let err = WSAGetLastError();
+                                return IoResult::Err(IoError {
+                                    kind: IoErrorKind::Other,
+                                    raw_os_error: err.0,
+                                    retryable: false,
+                                });
+                            }
+                        }
+
+                        // 3. ConnectEx の前提として 0.0.0.0:0 に bind しておく
+                        let mut local_addr = SOCKADDR_IN::default();
+                        local_addr.sin_family = AF_INET;
+                        local_addr.sin_port = 0; // 任意の空きポート
+                        local_addr.sin_addr.S_un.S_addr = 0; // 0.0.0.0
+
+                        let ret = bind(
+                            sock,
+                            &local_addr as *const SOCKADDR_IN
+                                as *const windows::Win32::Networking::WinSock::SOCKADDR,
+                            std::mem::size_of::<SOCKADDR_IN>() as i32,
+                        );
+                        if ret == SOCKET_ERROR {
+                            let err = WSAGetLastError();
+                            return IoResult::Err(IoError {
+                                kind: IoErrorKind::Other,
+                                raw_os_error: err.0,
+                                retryable: false,
+                            });
+                        }
+
+                        // 4. IOCP に関連付けておく
+                        let _ = CreateIoCompletionPort(
+                            HANDLE(sock.0 as *mut c_void),
+                            Some(self.iocp),
+                            0,
+                            0,
+                        );
+
+                        // 5. リモートアドレスを構築（ip_ptr は &u32 を想定）
+                        let ip_host: u32 = *(*ip_ptr as *const u32);
+                        let ip_net: u32 = ip_host;
+
+                        let mut remote_addr = SOCKADDR_IN::default();
+                        remote_addr.sin_family = AF_INET;
+                        remote_addr.sin_port = (*port).to_be(); // ネットワークバイトオーダー
+                        remote_addr.sin_addr.S_un.S_addr = ip_net;
+
+                        // 6. ConnectEx の関数ポインタを取得
+                        let mut guid = WSAID_CONNECTEX;
+                        let mut func: LPFN_CONNECTEX = None;
+                        let mut bytes = 0u32;
+
+                        let r = WSAIoctl(
+                            sock,
+                            SIO_GET_EXTENSION_FUNCTION_POINTER,
+                            Some(&mut guid as *mut _ as *mut _),
+                            std::mem::size_of::<windows::core::GUID>() as u32,
+                            Some(&mut func as *mut _ as *mut _),
+                            std::mem::size_of::<LPFN_CONNECTEX>() as u32,
+                            &mut bytes,
+                            None,
+                            None,
+                        );
+
+                        if r == SOCKET_ERROR {
+                            let err = WSAGetLastError();
+                            return IoResult::Err(IoError {
+                                kind: IoErrorKind::Other,
+                                raw_os_error: err.0,
+                                retryable: false,
+                            });
+                        }
+
+                        let connect_ex = match func {
+                            Some(f) => f,
+                            None => {
+                                return IoResult::Err(IoError {
+                                    kind: IoErrorKind::Other,
+                                    raw_os_error: -1,
+                                    retryable: false,
+                                });
+                            }
+                        };
+
+                        // 7. コンテキストを確保
+                        const ADDR_SINGLE: usize = std::mem::size_of::<SOCKADDR_IN>() + 16;
+                        const ADDR_BUF_LEN: usize = ADDR_SINGLE * 2;
+
+                        let ctx = Box::new(IocpCtx {
+                            overlapped: std::mem::zeroed(),
+                            fu_id,
+                            io_type: IoType::TcpConnect,
+                            iocp: self.iocp,
+                            socket: Some(sock),
+                            listener: None,
+                            addr_buf: Some(vec![0u8; ADDR_BUF_LEN].into_boxed_slice()),
+                        });
+                        let ctx_ptr = Box::into_raw(ctx);
+
+                        // 8. ConnectEx を投げる（非同期）
+                        let mut bytes_sent = 0u32;
+                        let res = connect_ex(
+                            sock,
+                            &remote_addr as *const SOCKADDR_IN
+                                as *const windows::Win32::Networking::WinSock::SOCKADDR,
+                            std::mem::size_of::<SOCKADDR_IN>() as i32,
+                            std::ptr::null(), // 送信データなし
+                            0,
+                            &mut bytes_sent,
+                            &mut (*ctx_ptr).overlapped,
+                        );
+
+                        if res.as_bool() {
+                            IoResult::Pending
+                        } else {
+                            let err = WSAGetLastError();
+                            if err.0 == WSA_IO_PENDING.0 {
+                                // 非同期進行中
+                                IoResult::Pending
+                            } else {
+                                // 即失敗 → ctx/sock 回収
+                                let _ = Box::from_raw(ctx_ptr);
+                                let _ = windows::Win32::Networking::WinSock::closesocket(sock);
+                                IoResult::Err(IoError {
+                                    kind: IoErrorKind::Other,
+                                    raw_os_error: err.0,
+                                    retryable: false,
+                                })
+                            }
+                        }
+                    }
+
+                    6 => {
+                        IoResult::Err(IoError {
+                            kind: IoErrorKind::NotImplYet,
+                            raw_os_error: -1,
+                            retryable: false,
+                        })
+                    }
+
+                    _ => {
+                        IoResult::Err(IoError {
+                            kind: IoErrorKind::InvalidInput,
+                            raw_os_error: -1,
+                            retryable: false,
+                        })
+                    }
+                }
+            }
         }
     }
 
@@ -640,6 +822,7 @@ impl Reactor for IocpReactor {
                 let fu_id = ctx.fu_id;
                 let io_type = ctx.io_type;
                 let socket = ctx.socket;
+                let listener = ctx.listener;
 
                 if ok.is_err() {
                     let err = std::io::Error::last_os_error();
@@ -656,10 +839,31 @@ impl Reactor for IocpReactor {
                 }
 
                 match io_type {
-                    IoType::StdoutWrite
-                    | IoType::StdinRead
-                    | IoType::Read
-                    | IoType::Write => {
+                    IoType::StdoutWrite => {
+                        out.push(Event {
+                            fu_id,
+                            result: IoResult::Ok(IoOk::StreamIo {
+                                len: bytes_transferred as u64,
+                            }),
+                        });
+                    }
+                    IoType::StdinRead => {
+                        out.push(Event {
+                            fu_id,
+                            result: IoResult::Ok(IoOk::StreamIo {
+                                len: bytes_transferred as u64,
+                            }),
+                        });
+                    }
+                    IoType::Read => {
+                        out.push(Event {
+                            fu_id,
+                            result: IoResult::Ok(IoOk::StreamIo {
+                                len: bytes_transferred as u64,
+                            }),
+                        });
+                    }
+                    IoType::Write => {
                         out.push(Event {
                             fu_id,
                             result: IoResult::Ok(IoOk::StreamIo {
@@ -674,10 +878,37 @@ impl Reactor for IocpReactor {
                         });
                     }
                     IoType::TcpAccept => {
-                        if let Some(sock) = socket {
+                        if let (Some(sock), Some(listener)) = (socket, listener) {
+                            // SO_UPDATE_ACCEPT_CONTEXT を呼ぶ
+                            // listener の値をバイト列として setsockopt に渡す
+                            let listen_raw = listener.0 as usize;
+                            let ptr = &listen_raw as *const usize as *const u8;
+                            let buf = std::slice::from_raw_parts(ptr, std::mem::size_of::<usize>());
+
+                            let ret = setsockopt(
+                                sock,
+                                SOL_SOCKET,
+                                SO_UPDATE_ACCEPT_CONTEXT,
+                                Some(buf),
+                            );
+
+                            if ret == SOCKET_ERROR {
+                                let err = WSAGetLastError();
+                                out.push(Event {
+                                    fu_id,
+                                    result: IoResult::Err(IoError {
+                                        kind: IoErrorKind::Other,
+                                        raw_os_error: err.0,
+                                        retryable: false,
+                                    }),
+                                });
+                                return;
+                            }
+
+
                             // 受け付けたソケットを IOCP に登録
                             let _ = CreateIoCompletionPort(
-                                HANDLE(sock.0 as *mut c_void),
+                                HANDLE(sock.0 as isize as *mut c_void),
                                 Some(self.iocp),
                                 0,
                                 0,
@@ -689,6 +920,49 @@ impl Reactor for IocpReactor {
                                     handle: sock.0 as u64,
                                 }),
                             });
+                        } else {
+                            out.push(Event {
+                                fu_id,
+                                result: IoResult::Err(IoError {
+                                    kind: IoErrorKind::Other,
+                                    raw_os_error: -1,
+                                    retryable: false,
+                                }),
+                            });
+                        }
+                    }
+                    IoType::TcpConnect => {
+                        if let Some(sock) = socket {
+                            // ConnectEx 後のお約束~~ SO_UPDATE_CONNECT_CONTEXT!!
+                            let raw = sock.0 as usize;
+                            let ptr = &raw as *const usize as *const u8;
+                            let buf = std::slice::from_raw_parts(ptr, std::mem::size_of::<usize>());
+
+                            let ret = setsockopt(
+                                sock,
+                                SOL_SOCKET,
+                                SO_UPDATE_CONNECT_CONTEXT,
+                                Some(buf),
+                            );
+
+                            if ret == SOCKET_ERROR {
+                                let err = WSAGetLastError();
+                                out.push(Event {
+                                    fu_id,
+                                    result: IoResult::Err(IoError {
+                                        kind: IoErrorKind::Other,
+                                        raw_os_error: err.0,
+                                        retryable: false,
+                                    }),
+                                });
+                            } else {
+                                out.push(Event {
+                                    fu_id,
+                                    result: IoResult::Ok(IoOk::NewHandle {
+                                        handle: sock.0 as u64,
+                                    }),
+                                });
+                            }
                         } else {
                             out.push(Event {
                                 fu_id,
