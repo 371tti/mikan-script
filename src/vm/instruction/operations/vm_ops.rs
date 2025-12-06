@@ -32,7 +32,7 @@ impl Operations {
         vm.st.r[0] = code; // return code
         vm.st.state_flag |= state_flag::PAUSE;
         // use fully qualified path to avoid recursive call
-        std::process::exit(code as i32);
+        vm.st.pc -= 1; // stay at exit instruction
     }
 }
 

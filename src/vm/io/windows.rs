@@ -171,8 +171,25 @@ impl Reactor for IocpReactor {
                     );
 
                     if res.is_ok() {
-                        // ctx は IOCP 側で Box::from_raw されるまで保持
-                        IoResult::Pending
+                        let ok = PostQueuedCompletionStatus(
+                            ctx_ptr.as_ref().unwrap().iocp,
+                            written,
+                            0,
+                            Some(&mut ctx_ptr.as_mut().unwrap().overlapped as *mut OVERLAPPED),
+                        );
+                        if ok.is_ok() {
+                            IoResult::Pending  // 完了通知は wait() で拾う
+                        } else {
+                            // ここで ctx を回収しないとリーク
+                            let _ = Box::from_raw(ctx_ptr);
+                            IoResult::Err(IoError {
+                                kind: IoErrorKind::Other,
+                                raw_os_error: std::io::Error::last_os_error()
+                                    .raw_os_error()
+                                    .unwrap_or(-1),
+                                retryable: false,
+                            })
+                        }
                     } else {
                         let err = GetLastError();
                         if err == ERROR_IO_PENDING {
@@ -220,8 +237,25 @@ impl Reactor for IocpReactor {
                 );
 
                 if res.is_ok() {
-                    // ctx は IOCP 側で Box::from_raw されるまで保持
-                    IoResult::Pending
+                    let ok = PostQueuedCompletionStatus(
+                        ctx_ptr.as_ref().unwrap().iocp,
+                        read,
+                        0,
+                        Some(&mut ctx_ptr.as_mut().unwrap().overlapped as *mut OVERLAPPED),
+                    );
+                    if ok.is_ok() {
+                        IoResult::Pending  // 完了通知は wait() で拾う
+                    } else {
+                        // ここで ctx を回収しないとリーク
+                        let _ = Box::from_raw(ctx_ptr);
+                        IoResult::Err(IoError {
+                            kind: IoErrorKind::Other,
+                            raw_os_error: std::io::Error::last_os_error()
+                                .raw_os_error()
+                                .unwrap_or(-1),
+                            retryable: false,
+                        })
+                    }
                 } else {
                     let err = GetLastError();
                     if err == ERROR_IO_PENDING {
@@ -808,6 +842,7 @@ impl Reactor for IocpReactor {
                     &mut overlapped_ptr,
                     if events == 0 { timeout } else { 0 },
                 );
+
 
                 if overlapped_ptr.is_null() {
                     // タイムアウト or ポートクローズ

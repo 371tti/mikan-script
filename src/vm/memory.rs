@@ -8,6 +8,7 @@ use std::{
 /// 上位24bit: heep id
 /// 下位40bit: heep内オフセット
 #[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct VPtr(pub u64);
 
 impl VPtr {
@@ -112,6 +113,16 @@ impl Memory {
             total_size += heep.size;
         }
         total_size
+    }
+
+    pub fn static_data(&mut self, data: &[u8]) -> VPtr {
+        let size = data.len();
+        let vptr = self.alloc_heep(size);
+        let heep_ptr = self.as_ptr(vptr);
+        unsafe {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), heep_ptr, size);
+        }
+        vptr
     }
 }
 

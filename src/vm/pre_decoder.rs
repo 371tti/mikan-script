@@ -76,16 +76,15 @@ const OPERANDS_VALUE: &[OperandPlan] = &[OperandPlan::Value];
 const OPERANDS_TWO_VALUES: &[OperandPlan] = &[OperandPlan::Value, OperandPlan::Value];
 const OPERANDS_PACK1: &[OperandPlan] = &[OperandPlan::PackedRegisters(1)];
 const OPERANDS_PACK2: &[OperandPlan] = &[OperandPlan::PackedRegisters(2)];
-// const OPERANDS_PACK3: &[OperandPlan] = &[OperandPlan::PackedRegisters(3)];
-// const OPERANDS_PACK4: &[OperandPlan] = &[OperandPlan::PackedRegisters(4)];
+const OPERANDS_PACK3: &[OperandPlan] = &[OperandPlan::PackedRegisters(3)];
+const OPERANDS_PACK4: &[OperandPlan] = &[OperandPlan::PackedRegisters(4)];
 const OPERANDS_PACK1_VALUE: &[OperandPlan] =
     &[OperandPlan::PackedRegisters(1), OperandPlan::Value];
 const OPERANDS_PACK2_VALUE: &[OperandPlan] =
     &[OperandPlan::PackedRegisters(2), OperandPlan::Value];
 const OPERANDS_PACK3_VALUE: &[OperandPlan] =
     &[OperandPlan::PackedRegisters(3), OperandPlan::Value];
-const OPERANDS_PACK4_VALUE: &[OperandPlan] =
-    &[OperandPlan::PackedRegisters(4), OperandPlan::Value];
+const OPERANDS_PACK7: &[OperandPlan] = &[OperandPlan::PackedRegisters(7)];
 
 impl PreDecoder {
     pub fn new() -> Self {
@@ -311,6 +310,9 @@ fn parse_arg(token: &str, line: usize) -> Result<Arg, PreDecodeError> {
 }
 
 fn parse_numeric(token: &str) -> Result<u64, ()> {
+    if let Some(named) = parse_named_constant(token) {
+        return Ok(named);
+    }
     let mut cleaned = token.replace('_', "");
     if cleaned.is_empty() {
         return Err(());
@@ -721,6 +723,9 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
         m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as OpPtr, OPERANDS_PACK2_VALUE));
         m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as OpPtr, OPERANDS_PACK2));
         m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as OpPtr, OPERANDS_PACK1));
+        m.insert("SET_IO", OpcodeSpec::new(Operations::set_io as OpPtr, OPERANDS_PACK7));
+        m.insert("WAIT_IO", OpcodeSpec::new(Operations::wait_io as OpPtr, OPERANDS_PACK3));
+        m.insert("GET_AN_IO", OpcodeSpec::new(Operations::get_an_io as OpPtr, OPERANDS_PACK4));
 
         // Register ops
         m.insert("MOV", OpcodeSpec::new(Operations::mov as OpPtr, OPERANDS_PACK2));
@@ -788,54 +793,72 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
         m.insert("TRAILING_ZEROS_U64", OpcodeSpec::new(Operations::trailing_zeros_u64 as OpPtr, OPERANDS_PACK2));
 
         // Memory ops
-        m.insert("LOAD_U64", OpcodeSpec::new(Operations::load_u64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U32", OpcodeSpec::new(Operations::load_u32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U16", OpcodeSpec::new(Operations::load_u16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("LOAD_U8", OpcodeSpec::new(Operations::load_u8 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U64", OpcodeSpec::new(Operations::store_u64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U32", OpcodeSpec::new(Operations::store_u32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U16", OpcodeSpec::new(Operations::store_u16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("STORE_U8", OpcodeSpec::new(Operations::store_u8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("LOAD_U64", OpcodeSpec::new(Operations::load_u64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("LOAD_U32", OpcodeSpec::new(Operations::load_u32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("LOAD_U16", OpcodeSpec::new(Operations::load_u16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("LOAD_U8", OpcodeSpec::new(Operations::load_u8 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("STORE_U64", OpcodeSpec::new(Operations::store_u64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("STORE_U32", OpcodeSpec::new(Operations::store_u32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("STORE_U16", OpcodeSpec::new(Operations::store_u16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("STORE_U8", OpcodeSpec::new(Operations::store_u8 as OpPtr, OPERANDS_PACK2_VALUE));
 
         // atomic ops (u64/u32/u16/u8 variants for load/store/add/sub) - common pattern: PACK3_VALUE for load/store, PACK4_VALUE for add/sub
-        m.insert("ATOMIC_LOAD_U64", OpcodeSpec::new(Operations::atomic_load_u64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U64", OpcodeSpec::new(Operations::atomic_store_u64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U64", OpcodeSpec::new(Operations::atomic_add_u64 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U64", OpcodeSpec::new(Operations::atomic_sub_u64 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U64", OpcodeSpec::new(Operations::atomic_load_u64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_U64", OpcodeSpec::new(Operations::atomic_store_u64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_ADD_U64", OpcodeSpec::new(Operations::atomic_add_u64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_U64", OpcodeSpec::new(Operations::atomic_sub_u64 as OpPtr, OPERANDS_PACK3_VALUE));
 
-        m.insert("ATOMIC_LOAD_U32", OpcodeSpec::new(Operations::atomic_load_u32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U32", OpcodeSpec::new(Operations::atomic_store_u32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U32", OpcodeSpec::new(Operations::atomic_add_u32 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U32", OpcodeSpec::new(Operations::atomic_sub_u32 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U32", OpcodeSpec::new(Operations::atomic_load_u32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_U32", OpcodeSpec::new(Operations::atomic_store_u32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_ADD_U32", OpcodeSpec::new(Operations::atomic_add_u32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_U32", OpcodeSpec::new(Operations::atomic_sub_u32 as OpPtr, OPERANDS_PACK3_VALUE));
 
-        m.insert("ATOMIC_LOAD_U16", OpcodeSpec::new(Operations::atomic_load_u16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U16", OpcodeSpec::new(Operations::atomic_store_u16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U16", OpcodeSpec::new(Operations::atomic_add_u16 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U16", OpcodeSpec::new(Operations::atomic_sub_u16 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U16", OpcodeSpec::new(Operations::atomic_load_u16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_U16", OpcodeSpec::new(Operations::atomic_store_u16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_ADD_U16", OpcodeSpec::new(Operations::atomic_add_u16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_U16", OpcodeSpec::new(Operations::atomic_sub_u16 as OpPtr, OPERANDS_PACK3_VALUE));
 
-        m.insert("ATOMIC_LOAD_U8", OpcodeSpec::new(Operations::atomic_load_u8 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_U8", OpcodeSpec::new(Operations::atomic_store_u8 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_U8", OpcodeSpec::new(Operations::atomic_add_u8 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_U8", OpcodeSpec::new(Operations::atomic_sub_u8 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_U8", OpcodeSpec::new(Operations::atomic_load_u8 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_U8", OpcodeSpec::new(Operations::atomic_store_u8 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_ADD_U8", OpcodeSpec::new(Operations::atomic_add_u8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_U8", OpcodeSpec::new(Operations::atomic_sub_u8 as OpPtr, OPERANDS_PACK3_VALUE));
 
         // Atomic signed variants
-        m.insert("ATOMIC_LOAD_I8", OpcodeSpec::new(Operations::atomic_load_i8 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I16", OpcodeSpec::new(Operations::atomic_load_i16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I32", OpcodeSpec::new(Operations::atomic_load_i32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_LOAD_I64", OpcodeSpec::new(Operations::atomic_load_i64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I8", OpcodeSpec::new(Operations::atomic_store_i8 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I16", OpcodeSpec::new(Operations::atomic_store_i16 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I32", OpcodeSpec::new(Operations::atomic_store_i32 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_STORE_I64", OpcodeSpec::new(Operations::atomic_store_i64 as OpPtr, OPERANDS_PACK3_VALUE));
-        m.insert("ATOMIC_ADD_I8", OpcodeSpec::new(Operations::atomic_add_i8 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I16", OpcodeSpec::new(Operations::atomic_add_i16 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I32", OpcodeSpec::new(Operations::atomic_add_i32 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_ADD_I64", OpcodeSpec::new(Operations::atomic_add_i64 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I8", OpcodeSpec::new(Operations::atomic_sub_i8 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I16", OpcodeSpec::new(Operations::atomic_sub_i16 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I32", OpcodeSpec::new(Operations::atomic_sub_i32 as OpPtr, OPERANDS_PACK4_VALUE));
-        m.insert("ATOMIC_SUB_I64", OpcodeSpec::new(Operations::atomic_sub_i64 as OpPtr, OPERANDS_PACK4_VALUE));
+        m.insert("ATOMIC_LOAD_I8", OpcodeSpec::new(Operations::atomic_load_i8 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_LOAD_I16", OpcodeSpec::new(Operations::atomic_load_i16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_LOAD_I32", OpcodeSpec::new(Operations::atomic_load_i32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_LOAD_I64", OpcodeSpec::new(Operations::atomic_load_i64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_I8", OpcodeSpec::new(Operations::atomic_store_i8 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_I16", OpcodeSpec::new(Operations::atomic_store_i16 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_I32", OpcodeSpec::new(Operations::atomic_store_i32 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_STORE_I64", OpcodeSpec::new(Operations::atomic_store_i64 as OpPtr, OPERANDS_PACK2_VALUE));
+        m.insert("ATOMIC_ADD_I8", OpcodeSpec::new(Operations::atomic_add_i8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_I16", OpcodeSpec::new(Operations::atomic_add_i16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_I32", OpcodeSpec::new(Operations::atomic_add_i32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_ADD_I64", OpcodeSpec::new(Operations::atomic_add_i64 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_I8", OpcodeSpec::new(Operations::atomic_sub_i8 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_I16", OpcodeSpec::new(Operations::atomic_sub_i16 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_I32", OpcodeSpec::new(Operations::atomic_sub_i32 as OpPtr, OPERANDS_PACK3_VALUE));
+        m.insert("ATOMIC_SUB_I64", OpcodeSpec::new(Operations::atomic_sub_i64 as OpPtr, OPERANDS_PACK3_VALUE));
 
         m
     })
+}
+
+fn parse_named_constant(token: &str) -> Option<u64> {
+    let upper = token.to_ascii_uppercase();
+    match upper.as_str() {
+        "STD_IO_WRITE" | "STDOUT_WRITE" => Some(1),
+        "STD_IO_READ" | "STDIN_READ" => Some(2),
+        "SLEEP" => Some(3),
+        "READ" => Some(4),
+        "WRITE" => Some(5),
+        "TCP_LISTEN" => Some(6),
+        "TCP_CONNECT" => Some(7),
+        "TCP_ACCEPT" => Some(8),
+        "SHUTDOWN" => Some(9),
+        "RANDOM_BYTES" => Some(10),
+        "TIME_NOW" => Some(11),
+        _ => None,
+    }
 }

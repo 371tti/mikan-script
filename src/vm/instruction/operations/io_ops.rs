@@ -289,6 +289,7 @@ impl Operations {
                 *r.add(fu_id_res_reg) = 0;
             }
         }
+        
         vm.next_step();
     }
 }

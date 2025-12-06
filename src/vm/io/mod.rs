@@ -175,6 +175,7 @@ pub struct IoEngine<R: Reactor> {
     completed: VecDeque<FuId>,
     reactor: R,
     unacquired_events: u64,
+    os_holed_events: u64,
 }
 
 pub struct Event {
@@ -190,6 +191,7 @@ impl<R: Reactor> IoEngine<R> {
             completed: VecDeque::new(),
             reactor: R::new().unwrap(),
             unacquired_events: 0,
+            os_holed_events: 0,
         }
     }
 
@@ -206,6 +208,7 @@ impl<R: Reactor> IoEngine<R> {
         match option_result {
             IoResult::Pending => {
                 self.futures.insert(fu_id, IoResult::Pending);
+                self.os_holed_events += 1;
             }
             IoResult::Ok(ok) => {
                 self.futures.insert(fu_id, IoResult::Ok(ok));
@@ -223,7 +226,7 @@ impl<R: Reactor> IoEngine<R> {
     /// 完了したイベントを1つ取得する（ノンブロッキング）
     pub fn get_a_event(&mut self) -> Option<Event> {
         if let Some(fu_id) = self.completed.pop_front() {
-            if let Some(state) = self.futures.get_mut(&fu_id) {
+            if let Some(state) = self.futures.remove(&fu_id) {
                 self.unacquired_events -= 1;
                 return Some(Event {
                     fu_id,
@@ -237,6 +240,10 @@ impl<R: Reactor> IoEngine<R> {
     /// 完了イベントをOSから最大 max_events 個まで収集する（ブロッキング）
     /// timeout_ms が負の場合は無限に待機
     pub fn blocking_collect_events(&mut self, timeout_ms: i64, max_events: usize) -> usize {
+        if self.os_holed_events == 0 {
+            return 0;
+        }
+
         let mut events = Vec::with_capacity(max_events);
         self.reactor.wait(timeout_ms, max_events, &mut events);
         let num_events = events.len();
@@ -244,6 +251,7 @@ impl<R: Reactor> IoEngine<R> {
             if let Some(state) = self.futures.get_mut(&event.fu_id) {
                 *state = event.result.clone();
                 self.completed.push_back(event.fu_id);
+                self.os_holed_events -= 1;
             }
         }
         num_events
@@ -294,6 +302,7 @@ where
             completed: completed.into(),
             reactor: R::new().unwrap(),
             unacquired_events: self.unacquired_events,
+            os_holed_events: 0,
         }
     }
 }
