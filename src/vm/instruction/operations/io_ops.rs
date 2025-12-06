@@ -3,19 +3,19 @@ use crate::vm::{instruction::operations::Operations, io::{FuId, IoOk, IoOp, IoRe
 
 /// IO操作
 impl Operations {
-    /// 整数の出力
-    /// 2 word instruction
-    /// ol[0]: src register index
-    #[inline(always)]
-    pub fn print_u64(vm: &mut VM) {
-        unsafe {
-            let ol = vm.next_operand();
-            let src = ol[0] as usize;
-            let r = vm.st.r.as_mut_ptr();
-            println!("{}", *r.add(src));
-        }
-        vm.next_step();
-    }
+    // /// 整数の出力
+    // /// 2 word instruction
+    // /// ol[0]: src register index
+    // #[inline(always)]
+    // pub fn print_u64(vm: &mut VM) {
+    //     unsafe {
+    //         let ol = vm.next_operand();
+    //         let src = ol[0] as usize;
+    //         let r = vm.st.r.as_mut_ptr();
+    //         println!("{}", *r.add(src));
+    //     }
+    //     vm.next_step();
+    // }
 
     /// allocate memory
     /// allocate *size + add_size, store id in *id_res_reg

@@ -29,5 +29,5 @@ opt-level = 3           # 最高速最適化
 lto = true              # Link Time Optimization
 codegen-units = 1       # 単一ユニットで最適化
 debug = false           # デバッグ情報を生成しない
-strip = "symbols"       # シンボル情報を除去
+strip = true            # バイナリからデバッグ情報を削除
 panic = "abort"         # パニック時即終了（ランタイムコスト減）

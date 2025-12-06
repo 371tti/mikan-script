@@ -719,7 +719,7 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
         m.insert("EXIT", OpcodeSpec::new(Operations::exit as OpPtr, OPERANDS_VALUE));
 
         // IO / Memory
-        m.insert("PRINT_U64", OpcodeSpec::new(Operations::print_u64 as OpPtr, OPERANDS_PACK1));
+        // m.insert("PRINT_U64", OpcodeSpec::new(Operations::print_u64 as OpPtr, OPERANDS_PACK1));
         m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as OpPtr, OPERANDS_PACK2_VALUE));
         m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as OpPtr, OPERANDS_PACK2));
         m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as OpPtr, OPERANDS_PACK1));
