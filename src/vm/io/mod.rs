@@ -3,7 +3,7 @@ pub mod windows;
 use std::collections::{HashMap, VecDeque};
 
 
-pub type IoId = u32;  // ソケット/ファイルなどのハンドル
+pub type IoId = u64;  // ソケット/ファイルなどのハンドル
 pub type FuId = u64;  // Future ID
 
 /// 非同期I/Oリアクターパターン
@@ -33,12 +33,15 @@ pub enum IoType {
     StdoutWrite,  // buf_ptr, len
     StdinRead,    // buf_ptr, len
 
+    // ---- File I/O ----
+    Read,        // handle, buf_ptr, len
+    Write,       // handle, buf_ptr, len
+
     // ---- TCP ----
     TcpConnect,  // addr_ptr, addr_len
     TcpListen,   // addr_ptr, addr_len
     TcpAccept,   // listener_handle
-    Read,        // handle, buf_ptr, len
-    Write,       // handle, buf_ptr, len
+    Shutdown,    // handle
 
     // ---- System info ----
     TimeNow,       // ()
@@ -106,6 +109,9 @@ pub enum IoOp {
     },
     TcpAccept {
         listener_handle: IoId,
+    },
+    Shutdown {
+        handle: IoId,
     },
     TimeNow,
     RandomBytes {
