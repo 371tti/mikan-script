@@ -1,4 +1,4 @@
-use crate::vm::{instruction::operations::Operations, io::{FuId, IoOk, IoOp, IoResult, TcpListenFlags}, memory::VPtr, vm::VM};
+use crate::vm::{instruction::operations::Operations, io::{FuId, IoOk, IoOp, IoResult, TcpListenFlags}, memory::{MemoryManager, VPtr}, vm::VM};
 
 
 /// IO操作
@@ -31,7 +31,7 @@ impl Operations {
             let add_size = vm.next_operand_imm();
             let r = vm.st.r.as_mut_ptr();
             let size = (*r.add(size_reg)).wrapping_add(add_size) as usize;
-            let v_ptr = vm.st.mem.alloc_heep(size);
+            let v_ptr = vm.st.mem.alloc_heep(size, vm.vm_id as usize);
             *r.add(ptr_reg) = v_ptr.0;
         }
         vm.next_step();
@@ -65,7 +65,7 @@ impl Operations {
             let ptr_reg = ol[0] as usize;
             let r = vm.st.r.as_mut_ptr();
             let v_ptr = VPtr(*r.add(ptr_reg));
-            vm.st.mem.dealloc_heep(v_ptr);
+            vm.st.mem.dealloc_heep(v_ptr, vm.vm_id as usize);
         }
         vm.next_step();
     }

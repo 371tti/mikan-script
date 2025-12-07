@@ -1,6 +1,6 @@
 use std::{ops::Deref, path::PathBuf, sync::{Arc, RwLock}};
 
-use rustc_hash::FxHashMap;
+use fxhash::FxHashMap;
 
 use crate::vm::{function::{Function, FunctionPtr}, pre_decoder::PreDecoder};
 

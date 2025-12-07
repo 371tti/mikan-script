@@ -246,28 +246,4 @@ impl Operations {
             }
         }
     }
-
-    /// 関数呼び出し
-    /// call func_index
-    /// set pc ( 普通は関数先頭アドレスで0 )
-    #[inline(always)]
-    pub fn call(vm: &mut VM) {
-        let func_index = vm.next_operand_imm();
-        let pc = vm.next_operand_imm();
-        vm.st.call_stack.push(vm.st.pc);
-        vm.st.call_stack.push(vm.st.now_call_index);
-        vm.st.pc = pc as usize;
-        vm.st.now_call_index = func_index as usize; 
-        vm.st.now_function_ptr = vm.function_table[vm.st.now_call_index];
-    }
-
-    /// 関数リターン
-    /// ret
-    #[inline(always)]
-    pub fn ret(vm: &mut VM) {
-        vm.st.now_call_index = vm.st.call_stack.pop().expect("Call stack underflow on return");
-        vm.st.pc = vm.st.call_stack.pop().unwrap();
-        vm.next_step();
-        vm.st.now_function_ptr = vm.function_table[vm.st.now_call_index];
-    }
 }

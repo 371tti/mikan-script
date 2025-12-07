@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
-use crate::vm::{code_manager::CodeManager, function::FunctionPtr, instruction::Instruction, io::{IoEngine, windows::IocpReactor}, memory::Memory};
+use crate::vm::{VMPool, code_manager::CodeManager, function::FunctionPtr, instruction::Instruction, io::{IoEngine, windows::IocpReactor}, memory::{Memory, MemoryManager}};
 
 const REGISTER_NUM: usize = 256;
+const INIT_MEMORY_LEN: usize = 16;
 
 #[cfg(target_os = "windows")]
 type PrimaryReactor = IocpReactor;
@@ -22,6 +23,8 @@ pub struct VM {
     pub vm_id: u64,
     /// IOエンジン
     pub io: IoEngine<PrimaryReactor>,
+    /// VMPoolへの参照
+    pub pool: Option<Arc<VMPool>>,
 }
 
 impl VM {
@@ -32,6 +35,7 @@ impl VM {
             cm: CodeManager::new("none".into()),
             vm_id: 0,
             io: IoEngine::<PrimaryReactor>::new(),
+            pool: None,
         }
     }
 
@@ -46,8 +50,17 @@ impl VM {
     }
 
     /// メモリを差し替えます
-    pub fn replace_memory(&mut self, mem: Memory) {
+    pub fn replace_memory(&mut self, mem: Arc<Memory>) {
         self.st.mem = mem;
+    }
+
+    /// VMPoolへの参照を設定します
+    pub fn set_pool(&mut self, pool: Arc<VMPool>) {
+        self.pool = Some(pool);
+    }
+
+    pub fn set_id(&mut self, id: u64) {
+        self.vm_id = id;
     }
 
     /// 指定の関数を実行します
@@ -136,7 +149,7 @@ pub struct VMState {
     pub now_function_ptr: FunctionPtr,
     pub pc: usize,
     pub now_call_index: usize,
-    pub mem: Memory,
+    pub mem: Arc<Memory>,
     /// 呼び出しスタック
     /// 現在の関数インデックスを保持する
     pub call_stack: Vec<usize>,
@@ -153,7 +166,7 @@ impl VMState {
         r[REGISTER_NUM - 1] = u64::MAX;
         VMState {
             r,
-            mem: Memory::new(),
+            mem: Arc::new(Memory::with_capacity(INIT_MEMORY_LEN)),
             now_function_ptr: FunctionPtr(std::ptr::null()),
             pc: 0,
             call_stack: Vec::new(),

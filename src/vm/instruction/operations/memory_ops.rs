@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering};
 
-use crate::vm::{instruction::operations::Operations, memory::VPtr, vm::VM};
+use crate::vm::{instruction::operations::Operations, memory::{MemoryManager, VPtr}, vm::VM};
 
 
 /// メモリ操作
