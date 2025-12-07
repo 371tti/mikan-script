@@ -26,7 +26,14 @@ impl Operations {
     /// exit with code *code_reg
     #[inline(always)]
     pub fn exit(vm: &mut VM) {
-        let code = vm.next_operand_imm() as u64;
+        let code = {
+            let ol = vm.next_operand();
+            let code_reg = ol[0] as usize;
+            unsafe {
+                let r = vm.st.r.as_mut_ptr();
+                *r.add(code_reg)
+            }
+        };
         // update VM state before actually exiting so any tooling or profiling
         // that inspects VM memory sees the correct values
         vm.st.r[0] = code; // return code

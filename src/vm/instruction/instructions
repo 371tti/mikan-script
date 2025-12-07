@@ -53,82 +53,104 @@ ROR_U64 rA rB; rA = rA ror rB
 ROR_U64_IMMEDIATE rA imm; rA = rA ror imm
 ROR_I64 rA rB; rA = rA ror rB
 ROR_I64_IMMEDIATE rA imm; rA = rA ror imm
-COUNT_ONES_U64
-COUNT_ZEROS_U64
-TRAILING_ZEROS_U64
-MOV
-LOAD_U64_IMMEDIATE
-SWAP
-LOAD_U64
-LOAD_U32
-LOAD_U16
-LOAD_U8
-STORE_U64
-STORE_U32
-STORE_U16
-STORE_U8
-LOAD_I8
-LOAD_I16
-LOAD_I32
-LOAD_I64
-STORE_I8
-STORE_I16
-STORE_I32
-STORE_I64
-ATOMIC_LOAD_U64
-ATOMIC_LOAD_U32
-ATOMIC_LOAD_U16
-ATOMIC_LOAD_U8
-ATOMIC_STORE_U64
-ATOMIC_STORE_U32
-ATOMIC_STORE_U16
-ATOMIC_STORE_U8
-ATOMIC_ADD_U64
-ATOMIC_ADD_U32
-ATOMIC_ADD_U16
-ATOMIC_ADD_U8
-ATOMIC_SUB_U64
-ATOMIC_SUB_U32
-ATOMIC_SUB_U16
-ATOMIC_SUB_U8
-ATOMIC_LOAD_I8
-ATOMIC_LOAD_I16
-ATOMIC_LOAD_I32
-ATOMIC_LOAD_I64
-ATOMIC_STORE_I8
-ATOMIC_STORE_I16
-ATOMIC_STORE_I32
-ATOMIC_STORE_I64
-ATOMIC_ADD_I8
-ATOMIC_ADD_I16
-ATOMIC_ADD_I32
-ATOMIC_ADD_I64
-ATOMIC_SUB_I8
-ATOMIC_SUB_I16
-ATOMIC_SUB_I32
-ATOMIC_SUB_I64
-PRINT_U64
-ALLOC
-REALLOC
-DEALLOC
-JUMP
-EQ_JUMP
-NEQ_JUMP
-LT_U64_JUMP
-LTE_U64_JUMP
-LT_I64_JUMP
-LTE_I64_JUMP
-GT_U64_JUMP
-GTE_U64_JUMP
-GT_I64_JUMP
-GTE_I64_JUMP
-CALL
-CALL_THREAD
-RET
-GET_DECODE
-GET_DECODED
-EXIT
-SET_IO
-IO_POLL
-WAIT_IO
-GET_AN_IO
+COUNT_ONES_U64 rA rB; rA = count_ones(rB)
+COUNT_ZEROS_U64 rA rB; rA = count_zeros(rB)
+TRAILING_ZEROS_U64 rA rB; rA = count_trailing_zeros(rB)
+MOV rA rB; rA = rB
+LOAD_U64_IMMEDIATE rA imm; rA = imm
+SWAP rA rB; temp = rA; rA = rB; rB = temp
+LOAD_U64 rA rB imm; u64 rB = memory[rA + imm]
+LOAD_U32 rA rB imm; u32 rB = memory[rA + imm]
+LOAD_U16 rA rB imm; u16 rB = memory[rA + imm]
+LOAD_U8 rA rB imm; u8 rB = memory[rA + imm]
+STORE_U64 rA rB imm; memory[rA + imm] = u64 rB
+STORE_U32 rA rB imm; memory[rA + imm] = u32 rB
+STORE_U16 rA rB imm; memory[rA + imm] = u16 rB
+STORE_U8 rA rB imm; memory[rA + imm] = u8 rB
+LOAD_I8 rA rB imm; i8 rB = memory[rA + imm]
+LOAD_I16 rA rB imm; i16 rB = memory[rA + imm]
+LOAD_I32 rA rB imm; i32 rB = memory[rA + imm]
+LOAD_I64 rA rB imm; i64 rB = memory[rA + imm]
+STORE_I8 rA rB imm; memory[rA + imm] = i8 rB
+STORE_I16 rA rB imm; memory[rA + imm] = i16 rB
+STORE_I32 rA rB imm; memory[rA + imm] = i32 rB
+STORE_I64 rA rB imm; memory[rA + imm] = i64 rB
+ATOMIC_LOAD_U64 rA rB imm; u64 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_U32 rA rB imm; u32 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_U16 rA rB imm; u16 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_U8 rA rB imm; u8 rB = atomic_load(memory[rA + imm])
+ATOMIC_STORE_U64 rA rB imm; atomic_store(memory[rA + imm], u64 rB)
+ATOMIC_STORE_U32 rA rB imm; atomic_store(memory[rA + imm], u32 rB)
+ATOMIC_STORE_U16 rA rB imm; atomic_store(memory[rA + imm], u16 rB)
+ATOMIC_STORE_U8 rA rB imm; atomic_store(memory[rA + imm], u8 rB)
+ATOMIC_ADD_U64 rA rB rC imm; rA = atomic_add(memory[rB + imm], u64 rC)
+ATOMIC_ADD_U32 rA rB rC imm; rA = atomic_add(memory[rB + imm], u32 rC)
+ATOMIC_ADD_U16 rA rB rC imm; rA = atomic_add(memory[rB + imm], u16 rC)
+ATOMIC_ADD_U8 rA rB rC imm; rA = atomic_add(memory[rB + imm], u8 rC)
+ATOMIC_SUB_U64 rA rB rC imm; rA = atomic_sub(memory[rB + imm], u64 rC)
+ATOMIC_SUB_U32 rA rB rC imm; rA = atomic_sub(memory[rB + imm], u32 rC)
+ATOMIC_SUB_U16 rA rB rC imm; rA = atomic_sub(memory[rB + imm], u16 rC)
+ATOMIC_SUB_U8 rA rB rC imm; rA = atomic_sub(memory[rB + imm], u8 rC)
+ATOMIC_LOAD_I8 rA rB imm; i8 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_I16 rA rB imm; i16 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_I32 rA rB imm; i32 rB = atomic_load(memory[rA + imm])
+ATOMIC_LOAD_I64 rA rB imm; i64 rB = atomic_load(memory[rA + imm])
+ATOMIC_STORE_I8 rA rB imm; atomic_store(memory[rA + imm], i8 rB)
+ATOMIC_STORE_I16 rA rB imm; atomic_store(memory[rA + imm], i16 rB)
+ATOMIC_STORE_I32 rA rB imm; atomic_store(memory[rA + imm], i32 rB)
+ATOMIC_STORE_I64 rA rB imm; atomic_store(memory[rA + imm], i64 rB)
+ATOMIC_ADD_I8 rA rB rC imm; rA = atomic_add(memory[rB + imm], i8 rC)
+ATOMIC_ADD_I16 rA rB rC imm; rA = atomic_add(memory[rB + imm], i16 rC)
+ATOMIC_ADD_I32 rA rB rC imm; rA = atomic_add(memory[rB + imm], i32 rC)
+ATOMIC_ADD_I64 rA rB rC imm; rA = atomic_add(memory[rB + imm], i64 rC)
+ATOMIC_SUB_I8 rA rB rC imm; rA = atomic_sub(memory[rB + imm], i8 rC)
+ATOMIC_SUB_I16 rA rB rC imm; rA = atomic_sub(memory[rB + imm], i16 rC)
+ATOMIC_SUB_I32 rA rB rC imm; rA = atomic_sub(memory[rB + imm], i32 rC)
+ATOMIC_SUB_I64 rA rB rC imm; rA = atomic_sub(memory[rB + imm], i64 rC)
+ALLOC rA rB imm; rB = allocate_memory(rA + imm)
+REALLOC rA rB; rB = reallocate_memory(rA)
+DEALLOC rA; deallocate_memory(rA)
+JUMP rA offset; pc = rA + offset
+EQ_JUMP rA rB rC offset; if rB == rC then pc = rA + offset
+NEQ_JUMP rA rB rC offset; if rB != rC then pc = rA + offset
+LT_U64_JUMP rA rB rC offset; if (rB as u64) < (rC as u64) then pc = rA + offset
+LTE_U64_JUMP rA rB rC offset; if (rB as u64) <= (rC as u64) then pc = rA + offset
+LT_I64_JUMP rA rB rC offset; if (rB as i64) < (rC as i64) then pc = rA + offset
+LTE_I64_JUMP rA rB rC offset; if (rB as i64) <= (rC as i64) then pc = rA + offset
+GT_U64_JUMP rA rB rC offset; if (rB as u64) > (rC as u64) then pc = rA + offset
+GTE_U64_JUMP rA rB rC offset; if (rB as u64) >= (rC as u64) then pc = rA + offset
+GT_I64_JUMP rA rB rC offset; if (rB as i64) > (rC as i64) then pc = rA + offset
+GTE_I64_JUMP rA rB rC offset; if (rB as i64) >= (rC as i64) then pc = rA + offset
+CALL rOffset call_frame; push [pc, call_frame]; pc = rOffset; call_frame = call_frame
+CALL_THREAD rOffset rB call_frame; if vm.has_pool() { VM_ID rB = pool.push(vm(pc = rOffset; call_frame = call_frame)); } else { rB = -1; } 
+RET ; [pc, call_frame] = pop();
+GET_DECODE; ! Don't use it ! pre decoder auto push this instruction
+GET_DECODED; manual update function table
+EXIT r1; exit with code r1
+SET_IO rA rB rC rD rE rF rG; rA = set_io( match *rB { 1 => StdIoWrite(buf_ptr=rC, len=rD), 2 => StdIoRead(buf_ptr=rC, len=rD), 3 => Sleep(ms=rC), 4 => Read(handle=rC, buf_ptr=rD, len=rE), 5 => Write(handle=rC, buf_ptr=rD, len=rE), 6 => TCPListen(ip_ptr=rC, port=rD, backlog=rE, flag=rF, family=rG), 7 => TCPConnect(ip_ptr=rC, port=rD, flag=rE, family=rF), 8 => TCPAccept(handle=rC), 9 => SocketShutdown(handle=rC), 10 => GetRandomBytes(buf_ptr=rC, len=rD), 11 => GetTimeNow(), _ => Panic("Invalid IO Type") } )
+GET_AN_IO rA rB rC rD; rA = if que.has_completed() { io = que.pop(); match io {PENDING => {rB = 0;}, StreamIO{len} => {rB = 1; rC = len;}, NewHandle{handle_id} => {rB = 2; rC = handle_id;}, SleepOK => {rB = 3;}, TimeNowOk{low, hight} => {rB = 4; rC =low; rD = hight;}, Simple => {rB = 5;}, Err{err_code, os_err_code, retryble_flag} => {rB = -err_code; rC = os_err_code; rD = retryble_flag; } } } else { 0 }
+
+以下のフォーマットに従っています。
+OpeCode OpeRand; Description
+
+命令長は以下のような規則に従っており、オペランドから判断できます。
+1word instruction: // no operands
+2word instruction: rA...
+3word instruction: rA... imm
+3word instruction: rA... offset
+3word instruction: rOffset call_frame
+3word instruction: rOffset rB call_frame
+3word instruction: imm imm
+
+call_frame は関数のアドレスを示します。 pre_decoderは関数名からアドレスを計算します
+offset はそのCallFrameのラベルアドレスが入ります pre_decoderはラベル名からアドレスを計算します
+imm は即値です
+rA, rB, rC, ... はレジスタの中の値を示します *rA などはレジスタ番号として渡されている値を示します
+rOffset はレジスタに入っているアドレスを示します
+
+詳細
+- Atomic演算命令は返り値としてold valueを返します
+- ワード長においてレジスタ数8以内は1wordとして扱われます
+- 即値は64bit固定で1wordとして扱われます
+- VMはコールフレームごとに独立したPCを持っています
+- OverFlow, Div 0, OutOfRangeなどは、黒魔術によりMikan-Scriptではすべてコンパイル時に検証されます。
