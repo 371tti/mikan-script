@@ -122,6 +122,13 @@ pub enum IoOp {
         buf_ptr: u64,
         len: u64,
     },
+    // /// 通知が来るまで待機
+    // Wait,
+    // /// 指定のFuture ID へ通知
+    // Wake {
+    //     fu_id: FuId,
+    // }
+
 }
 
 #[derive(Debug, Clone)]
