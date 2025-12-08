@@ -69,6 +69,29 @@ impl Operations {
         }
         vm.next_step();
     }
+
+    /// memory copy
+    /// 3 word instruction
+    /// ol[0]: src id reg
+    /// ol[1]: dest id reg
+    /// ol[2]: size reg
+    #[inline(always)]
+    pub fn memory_copy(vm: &mut VM) {
+        unsafe {
+            let ol = vm.next_operand();
+            let src_ptr_reg = ol[0] as usize;
+            let dest_ptr_reg = ol[1] as usize;
+            let size_reg = ol[2] as usize;
+            let r = vm.st.r.as_mut_ptr();
+            let src_v_ptr = VPtr(*r.add(src_ptr_reg));
+            let dest_v_ptr = VPtr(*r.add(dest_ptr_reg));
+            let size = *r.add(size_reg) as usize;
+            let src_ptr = vm.st.mem.as_ptr(src_v_ptr);
+            let dest_ptr = vm.st.mem.as_ptr(dest_v_ptr);
+            std::ptr::copy_nonoverlapping(src_ptr, dest_ptr, size);
+        }
+        vm.next_step();
+    }
 }
 
 /// Async IO
@@ -200,7 +223,7 @@ impl Operations {
     /// collect events
     /// ol[0]: timeout ms reg (-1 = infinite)
     /// ol[1]: max events reg
-    /// ol[3]: result num reg
+    /// ol[2]: result num reg
     #[inline(always)]
     pub fn wait_io(vm: &mut VM) {
         unsafe {

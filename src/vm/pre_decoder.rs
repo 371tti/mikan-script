@@ -723,6 +723,7 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
         m.insert("ALLOC", OpcodeSpec::new(Operations::alloc as OpPtr, OPERANDS_PACK2_VALUE));
         m.insert("REALLOC", OpcodeSpec::new(Operations::realloc as OpPtr, OPERANDS_PACK2));
         m.insert("DEALLOC", OpcodeSpec::new(Operations::dealloc as OpPtr, OPERANDS_PACK1));
+        m.insert("MEMORY_COPY", OpcodeSpec::new(Operations::memory_copy as OpPtr, OPERANDS_PACK3));
         m.insert("SET_IO", OpcodeSpec::new(Operations::set_io as OpPtr, OPERANDS_PACK7));
         m.insert("WAIT_IO", OpcodeSpec::new(Operations::wait_io as OpPtr, OPERANDS_PACK3));
         m.insert("GET_AN_IO", OpcodeSpec::new(Operations::get_an_io as OpPtr, OPERANDS_PACK4));

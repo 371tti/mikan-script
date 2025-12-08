@@ -23,7 +23,7 @@ pub trait MemoryManager: Send + Sync {
 pub type Memory = DefaultMemoryManager;
 /// らっぷされてないやつ たぶん早いけどあぶない？
 #[cfg(feature = "unsafe-opt")]
-pub type Memory = NoWrapMemoryManager;
+pub type Memory = RawOSMemoryManager;
 
 /// 仮想ポインタ
 /// 上位24bit: heep id
