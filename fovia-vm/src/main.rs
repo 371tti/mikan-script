@@ -1,7 +1,7 @@
 
 use std::sync::Arc;
 
-use mikan_script::vm::{VMPool, memory::MemoryManager, pre_decoder::PreDecoder};
+use fovia_vm::vm::{VMPool, memory::MemoryManager, pre_decoder::PreDecoder};
 
 fn main() {
     let pool = VMPool::new();

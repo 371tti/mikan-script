@@ -26,6 +26,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fovia-vm"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "core_affinity",
+ "fxhash",
+ "windows",
+]
+
+[[package]]
 name = "fxhash"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -45,16 +55,6 @@ name = "libc"
 version = "0.2.177"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
-
-[[package]]
-name = "mikan-script"
-version = "0.1.0"
-dependencies = [
- "bitflags",
- "core_affinity",
- "fxhash",
- "windows",
-]
 
 [[package]]
 name = "num_cpus"
