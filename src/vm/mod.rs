@@ -2,7 +2,7 @@ use std::{
     path::PathBuf, sync::{Arc, Mutex, atomic::AtomicU64}, thread::{self, JoinHandle}
 };
 
-use crate::vm::{code_manager::CodeManager, memory::{Memory, MemoryManager}, vm::VM};
+use crate::vm::{code_manager::CodeManager, io::Reactor, memory::{Memory, MemoryManager}, vm::{PrimaryReactor, VM}};
 
 pub mod code_manager;
 pub mod memory;
@@ -20,15 +20,18 @@ pub struct VMPool {
     handles: Mutex<Vec<JoinHandle<()>>>,
     pub code_manager: CodeManager,
     pub memory: Arc<Memory>,
+    pub reactor: Arc<PrimaryReactor>,
 }
 
 impl VMPool {
     pub fn new() -> Self {
+        let reactor = Arc::new(PrimaryReactor::new().unwrap());
         VMPool {
             vm_num: AtomicU64::new(0),
             handles: Mutex::new(Vec::new()),
             code_manager: CodeManager::new("none".into()),
             memory: Arc::new(Memory::with_capacity(INIT_MEMORY_LEN)),
+            reactor,
         }
     }
 
@@ -36,8 +39,8 @@ impl VMPool {
         self.code_manager = CodeManager::new(PathBuf::from(path));
     }
 
-    pub fn run(self: Arc<Self>) {
-        let vm = VM::new();
+    pub fn run(self: &Arc<Self>) {
+        let vm = VM::new(self.reactor.clone());
         self.push_and_run_threaded(vm,false);
     }
 

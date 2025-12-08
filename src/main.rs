@@ -1,11 +1,10 @@
 
 use std::sync::Arc;
 
-use mikan_script::vm::{VMPool, memory::MemoryManager, pre_decoder::PreDecoder, vm::VM};
+use mikan_script::vm::{VMPool, memory::MemoryManager, pre_decoder::PreDecoder};
 
 fn main() {
     let pool = VMPool::new();
-    let vm = VM::new();
 
     // static_data[0] = HTTP response, [1] = sockaddr (0.0.0.0:8080)
     pool.memory.static_data(b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\nHello World!");
@@ -72,6 +71,6 @@ SHUT_EVENT:
     let functions = decoder.decode(source).expect("decode succeeds");
     pool.code_manager.set_functions(functions);
     let arc_pool = Arc::new(pool);
-    arc_pool.push_and_run_threaded(vm, false);
+    arc_pool.run();
     arc_pool.wait_all();
 }

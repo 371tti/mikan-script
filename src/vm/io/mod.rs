@@ -1,6 +1,6 @@
 pub mod windows;
 
-use std::collections::{HashMap, VecDeque};
+use std::{collections::{HashMap, VecDeque}, sync::Arc};
 
 
 pub type IoId = u64;  // ソケット/ファイルなどのハンドル
@@ -180,7 +180,7 @@ pub struct IoEngine<R: Reactor> {
     next_fu: FuId,
     futures: HashMap<FuId, IoResult>,
     completed: VecDeque<FuId>,
-    reactor: R,
+    reactor: Arc<R>,
     unacquired_events: u64,
     os_holed_events: u64,
 }
@@ -191,12 +191,12 @@ pub struct Event {
 }
 
 impl<R: Reactor> IoEngine<R> {
-    pub fn new() -> Self {
+    pub fn new(reactor: Arc<R>) -> Self {
         IoEngine {
             next_fu: 1,
             futures: HashMap::new(),
             completed: VecDeque::new(),
-            reactor: R::new().unwrap(),
+            reactor,
             unacquired_events: 0,
             os_holed_events: 0,
         }
@@ -307,7 +307,7 @@ where
             next_fu: self.next_fu,
             futures: futures,
             completed: completed.into(),
-            reactor: R::new().unwrap(),
+            reactor: self.reactor.clone(),
             unacquired_events: self.unacquired_events,
             os_holed_events: 0,
         }

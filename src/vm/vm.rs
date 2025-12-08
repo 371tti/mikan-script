@@ -6,7 +6,7 @@ const REGISTER_NUM: usize = 256;
 const INIT_MEMORY_LEN: usize = 16;
 
 #[cfg(target_os = "windows")]
-type PrimaryReactor = IocpReactor;
+pub type PrimaryReactor = IocpReactor;
 
 /// Direct-threaded VM
 /// 関数ポインタ配列から命令を実行し続ける状態機械
@@ -28,13 +28,13 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new() -> Self {
+    pub fn new(reactor: Arc<PrimaryReactor>) -> Self {
         VM {
             st: VMState::new(),
             function_table: Box::new([]),
             cm: CodeManager::new("none".into()),
             vm_id: 0,
-            io: IoEngine::<PrimaryReactor>::new(),
+            io: IoEngine::new(reactor),
             pool: None,
         }
     }

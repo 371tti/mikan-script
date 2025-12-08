@@ -86,7 +86,8 @@ impl Operations {
             unsafe {
                 let r = vm.st.r.as_mut_ptr();
                 let pc = *r.add(pc_reg);
-                let mut new_vm = VM::new();
+                let reactor = pool.reactor.clone();
+                let mut new_vm = VM::new(reactor);
                 new_vm.st.r[pc_reg] = pc;
                 new_vm.st.now_call_index = func_index as usize;
                 new_vm.st.now_function_ptr = new_vm.function_table[new_vm.st.now_call_index];
