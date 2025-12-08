@@ -65,7 +65,7 @@ impl MemoryManager for DefaultMemoryManager {
             reuse_list: Arc::new(Mutex::new(Vec::new())),
         }
     }
-
+    
     /// 新しいHeepを確保
     /// これだけ
     #[inline(always)]
@@ -81,7 +81,7 @@ impl MemoryManager for DefaultMemoryManager {
             return VPtr::from_heep_id(id);
         }
     }
-
+    
     /// サイズ再確保
     #[inline(always)]
     fn realloc_heep(&self, ptr: VPtr, new_size: usize) {
@@ -126,7 +126,7 @@ impl MemoryManager for DefaultMemoryManager {
     fn static_data(&self, data: &[u8]) -> VPtr {
         let size = data.len();
         let vptr = self.alloc_heep(size, 0);
-        let heep_ptr = self.as_ptr(vptr);
+        let heep_ptr: *mut u8 = self.as_ptr(vptr);
         unsafe {
             std::ptr::copy_nonoverlapping(data.as_ptr(), heep_ptr, size);
         }
@@ -143,7 +143,7 @@ impl Heep {
     #[inline(always)]
     pub fn new(size: usize) -> Self {
         Heep {
-            raw: RawHeep::new(size),
+            raw: RawHeep::alloc(size),
         }
     }
 }
@@ -177,32 +177,20 @@ impl RawHeep {
     const ALIGN: usize = 64;
 
     #[inline(always)]
-    fn new(size: usize) -> Self {
-        let null_self = RawHeep {
-            ptr: NonNull::dangling(),
-            size: 0,
-        };
-        null_self.alloc(size);
-        null_self
-    }
-
-    #[inline(always)]
-    fn ptr(&self) -> *mut u8 {
-        self.ptr.as_ptr()
-    }
-
-    #[inline(always)]
-    fn alloc(&self, size: usize) {
+    fn alloc(size: usize) -> Self {
         let layout = alloc::Layout::from_size_align(size, Self::ALIGN).unwrap();
         let uncheck_ptr = unsafe { alloc::alloc(layout) };
         if uncheck_ptr.is_null() {
             oom();
         }
-        unsafe {
-            let this = self as *const Self as *mut Self;
-            (*this).ptr = NonNull::new_unchecked(uncheck_ptr);
-            (*this).size = size;
-        }
+        let ptr = unsafe { NonNull::new_unchecked(uncheck_ptr) };
+
+        RawHeep { ptr, size }
+    }
+
+    #[inline(always)]
+    fn ptr(&self) -> *mut u8 {
+        self.ptr.as_ptr()
     }
 
     #[inline(always)]
@@ -229,7 +217,7 @@ impl RawHeep {
 
     #[inline(always)]
     fn deep_copy(&self) -> Self {
-        let new_struct = RawHeep::new(self.size);
+        let new_struct = RawHeep::alloc(self.size);
         unsafe {
             std::ptr::copy_nonoverlapping(self.ptr(), new_struct.ptr(), self.size);
         }
@@ -260,7 +248,7 @@ impl MemoryManager for NoWrapMemoryManager {
     {
         NoWrapMemoryManager
     }
-
+    
     fn alloc_heep(&self, size: usize, _shard_hint: usize) -> VPtr {
         let heap = Heep::new(size);
         let ptr = heap.ptr();
