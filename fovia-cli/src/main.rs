@@ -1,3 +1,8 @@
+pub const LOGO: &'static str = r#"
+FoVia
+"#;
+
 fn main() {
-    println!("Hello, world!");
+    println!("{}", LOGO);
+    
 }
