@@ -1,0 +1,54 @@
+struct Str {}
+
+impl Str {
+    fn print_u64(n: u64) {
+        let buf_size: u64 = 32.
+        let buf: u64 = alloc(buf_size).
+        let value: u64 = n.
+        let idx: u64 = 0.
+
+        let len: u64 = loop {
+            let digit: u64 = value % 10.
+            let ch: u64 = digit + 48.
+            store_u8(buf, idx, ch).
+            value = value / 10.
+            idx = idx + 1.
+            match value {
+                < 1 => { brk idx. }
+                _ => 0
+            }
+        }.
+
+        let i: u64 = 0.
+        let j: u64 = len - 1.
+        loop {
+            match i < j {
+                == 0 => { brk 0. }
+                _ => {
+                    let a: u64 = load_u8(buf, i).
+                    let b: u64 = load_u8(buf, j).
+                    store_u8(buf, i, b).
+                    store_u8(buf, j, a).
+                    i = i + 1.
+                    j = j - 1.
+                    0
+                }
+            }
+        }.
+
+        stdout_buf(buf, len).
+    }
+}
+
+fn main() -> i32 {
+    let count: u64 = 0.
+    loop {
+        count = match count {
+            >= 1000000000 => { brk 0. }
+            _ => count + 1
+        }.
+    }.
+    Str::print_u64(count).
+    !reactor.stdout("\n").
+    0
+}

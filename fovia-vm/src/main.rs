@@ -1,76 +1,40 @@
 
+use std::fs;
+use std::io::{self, Read};
 use std::sync::Arc;
 
-use fovia_vm::vm::{VMPool, memory::MemoryManager, pre_decoder::PreDecoder};
+use fovia_vm::vm::{VMPool, pre_decoder::PreDecoder};
 
 fn main() {
     let pool = VMPool::new();
-
-    // static_data[0] = HTTP response, [1] = sockaddr (0.0.0.0:8080)
-    pool.memory.static_data(b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\nHello World!");
-    pool.memory.static_data(&[0, 0, 0, 0]);
-
-    let source = r#"
-MAIN
-    LOAD_U64_IMMEDIATE r0 0                  ; response ptr
-    LOAD_U64_IMMEDIATE r1 70                 ; response len
-    LOAD_U64_IMMEDIATE r2 1000               ; wait timeout
-    LOAD_U64_IMMEDIATE r3 8                  ; max events
-    LOAD_U64_IMMEDIATE r4 1099511627776      ; sockaddr ptr (= 0x1 << 40)
-    LOAD_U64_IMMEDIATE r5 8080               ; port 8080
-    LOAD_U64_IMMEDIATE r6 128                ; backlog
-    LOAD_U64_IMMEDIATE r7 0                  ; listen flags
-    LOAD_U64_IMMEDIATE r8 4                  ; AF_INET
-    LOAD_U64_IMMEDIATE r9 8192               ; request buf size
-    ALLOC         r9 r10 0                   ; request buf ptr => r10
-
-    SET_IO        r20 TCP_LISTEN r4 r5 r6 r7 r8
-WAIT_LISTEN:
-    WAIT_IO       r2 r3 r21
-WAIT_LISTEN_EVENT:
-    GET_AN_IO     r22 r23 r24 r25
-    EQ_JUMP       r0 r22 r0 WAIT_LISTEN
-    EQ_JUMP       r0 r22 r20 LISTEN_READY
-    JUMP          r0 WAIT_LISTEN_EVENT
-
-LISTEN_READY:
-    MOV           r26 r24                      ; listener handle
-    SET_IO        r27 TCP_ACCEPT r26
-    MOV           r28 r27                      ; accept fu_id
-
-EVENT_LOOP:
-    WAIT_IO       r2 r3 r21
-WAIT_EVENT:
-    GET_AN_IO     r22 r23 r24 r25
-    EQ_JUMP       r0 r22 r0 EVENT_LOOP
-
-    EQ_JUMP       r0 r22 r28 ACCEPT_EVENT
-    EQ_JUMP       r0 r22 r29 READ_EVENT
-    EQ_JUMP       r0 r22 r30 WRITE_EVENT
-    EQ_JUMP       r0 r22 r31 SHUT_EVENT
-    JUMP          r0 WAIT_EVENT
-
-ACCEPT_EVENT:
-    MOV           r40 r24                      ; client handle
-    SET_IO        r29 READ r40 r10 r9          ; read request
-    JUMP          r0 WAIT_EVENT
-
-READ_EVENT:
-    SET_IO        r30 WRITE r40 r0 r1          ; send response
-    JUMP          r0 WAIT_EVENT
-
-WRITE_EVENT:
-    SET_IO        r31 SHUTDOWN r40             ; graceful close
-    JUMP          r0 WAIT_EVENT
-
-SHUT_EVENT:
-    SET_IO        r28 TCP_ACCEPT r26           ; accept next client
-    JUMP          r0 WAIT_EVENT
-"#;
+    let source = read_source();
     let decoder = PreDecoder::new();
-    let functions = decoder.decode(source).expect("decode succeeds");
+    let functions = decoder.decode(&source, pool.memory.as_ref()).expect("decode succeeds");
     pool.code_manager.set_functions(functions);
     let arc_pool = Arc::new(pool);
     arc_pool.run();
     arc_pool.wait_all();
+}
+
+fn read_source() -> String {
+    let mut args = std::env::args().skip(1);
+    if let Some(path) = args.next() {
+        if path == "-" {
+            let mut buf = String::new();
+            io::stdin()
+                .read_to_string(&mut buf)
+                .expect("failed to read stdin");
+            return buf;
+        }
+        return fs::read_to_string(path).expect("failed to read asm file");
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let candidate = exe.with_extension("fvo");
+        if candidate.exists() {
+            return fs::read_to_string(candidate).expect("failed to read bundled fvo");
+        }
+    }
+
+    fs::read_to_string("program.asm").expect("failed to read program.asm")
 }

@@ -1,22 +1,12 @@
-use mikan_script::vm::{pre_decoder::PreDecoder, vm::VM, VMPool};
+DATA HTTP_RES "HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\nHello World!"
+DATA SOCKADDR 0 0 0 0
 
-fn main() {
-    let mut pool = VMPool::new();
-    let mut vm = VM::new();
-
-    // static_data[0] = HTTP response, [1] = sockaddr (0.0.0.0:8080)
-    vm.st
-        .mem
-        .static_data(b"HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\nHello World!");
-    vm.st.mem.static_data(&[0, 0, 0, 0]);
-
-    let source = r#"
 MAIN
-    LOAD_U64_IMMEDIATE r0 0                  ; response ptr
+    LOAD_U64_IMMEDIATE r0 HTTP_RES           ; response ptr
     LOAD_U64_IMMEDIATE r1 70                 ; response len
     LOAD_U64_IMMEDIATE r2 1000               ; wait timeout
     LOAD_U64_IMMEDIATE r3 8                  ; max events
-    LOAD_U64_IMMEDIATE r4 1099511627776      ; sockaddr ptr (= 0x1 << 40)
+    LOAD_U64_IMMEDIATE r4 SOCKADDR           ; sockaddr ptr
     LOAD_U64_IMMEDIATE r5 8080               ; port 8080
     LOAD_U64_IMMEDIATE r6 128                ; backlog
     LOAD_U64_IMMEDIATE r7 0                  ; listen flags
@@ -66,10 +56,3 @@ WRITE_EVENT:
 SHUT_EVENT:
     SET_IO        r28 TCP_ACCEPT r26           ; accept next client
     JUMP          r0 WAIT_EVENT
-"#;
-    let decoder = PreDecoder::new();
-    let functions = decoder.decode(source).expect("decode succeeds");
-    pool.code_manager.set_functions(functions);
-    pool.push_and_run_threaded(vm, false);
-    pool.wait_all();
-}

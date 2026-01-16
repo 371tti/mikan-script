@@ -107,8 +107,8 @@ impl MemoryManager for DefaultMemoryManager {
     #[inline(always)]
     fn as_ptr(&self, ptr: VPtr) -> *mut u8 {
         if let Some(heep) = self.data.read().unwrap().get(ptr.heep_id() as usize) {
-            let ptr = heep.ptr();
-            ptr
+            let base = heep.ptr();
+            unsafe { base.add(ptr.offset()) }
         } else {
             std::process::exit(-9998);
         }

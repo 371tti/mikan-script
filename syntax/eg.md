@@ -1,42 +1,9 @@
-struct Vec<T> {
-    pub ptr: usize,
-    pub len: usize,
-    cap: usize,
+
+fn main() -> i32 {
+    print("hello world!").
 }
 
-enum Option<T> {
-    Some(T),
-    None
+fn print(s: static str) {
+    !reactor.stdout(s).
 }
 
-fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-state Sorted(bool)
-state Predicate {
-    expr_buf: String
-}
-
-// state は state を操作するためのブロックを配置します
-// satisfy の後にはbool を返す式が必要です。 式を満たす場合実装されます。
-impl Vec<T> 
-{
-    pub fn shuffle(&mut self) {
-        //...
-    } state {
-        Self@Sorted.0 = false;
-    }
-} satisfy {
-    Self@Sorted.is_true()
-}
-
-impl i32 
-{
-    pub fn add(self: Self@Predicate, other: i32@Predicate) 
-    {
-        self += other
-    } state {
-        self@Predicate += other@Predicate;
-    }
-}

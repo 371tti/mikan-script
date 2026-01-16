@@ -3,6 +3,7 @@ use std::fmt;
 use std::sync::OnceLock;
 
 use crate::vm::function::Function;
+use crate::vm::memory::MemoryManager;
 use crate::vm::instruction::{Instruction, OpPtr};
 
 use super::{instruction::operations::Operations};
@@ -91,10 +92,11 @@ impl PreDecoder {
         Self
     }
 
-    pub fn decode(&self, source: &str) -> Result<Vec<Function>, PreDecodeError> {
+    pub fn decode(&self, source: &str, memory: &dyn MemoryManager) -> Result<Vec<Function>, PreDecodeError> {
         let mut functions = Vec::new();
         let mut current: Option<ParsedFunction> = None;
         let mut defined_names: HashSet<String> = HashSet::new();
+        let mut static_data_symbols: HashMap<String, u64> = HashMap::new();
         let opcode_table = opcode_table();
 
         'line_loop: for (line_idx, raw_line) in source.lines().enumerate() {
@@ -114,6 +116,24 @@ impl PreDecoder {
                 continue;
             }
             let mut first_raw = tokens.remove(0);
+            if first_raw.eq_ignore_ascii_case("DATA") {
+                if current.is_some() {
+                    return Err(PreDecodeError::StaticDataInsideFunction { line: line_no });
+                }
+
+                let (name, bytes) = parse_data_directive(line, line_no)?;
+                let name_upper = name.to_ascii_uppercase();
+                if defined_names.contains(&name_upper) || static_data_symbols.contains_key(&name_upper) {
+                    return Err(PreDecodeError::DuplicateStaticData {
+                        name: name_upper,
+                        line: line_no,
+                    });
+                }
+
+                let vptr = memory.static_data(&bytes);
+                static_data_symbols.insert(name_upper, vptr.0);
+                continue;
+            }
 
             loop {
                 if let Some(label_raw) = first_raw.strip_suffix(':') {
@@ -284,7 +304,7 @@ impl PreDecoder {
 
         ordered
             .into_iter()
-            .map(|parsed| parsed.into_function(&name_to_index))
+            .map(|parsed| parsed.into_function(&name_to_index, &static_data_symbols))
             .collect()
     }
 }
@@ -467,6 +487,10 @@ pub enum PreDecodeError {
     UnexpectedLabel { opcode: String, label: String, line: usize },
     ExpectedRegister { token: String, line: usize },
     RegisterOutOfRange { token: String, line: usize },
+    DuplicateStaticData { name: String, line: usize },
+    StaticDataInsideFunction { line: usize },
+    InvalidDataDirective { message: String, line: usize },
+    StaticDataByteOutOfRange { token: String, line: usize },
 }
 
 impl fmt::Display for PreDecodeError {
@@ -547,6 +571,18 @@ impl fmt::Display for PreDecodeError {
                 f,
                 "register value '{token}' must fit in 8 bits for packed operands (line {line})"
             ),
+            PreDecodeError::DuplicateStaticData { name, line } => {
+                write!(f, "static data '{name}' defined multiple times (line {line})")
+            },
+            PreDecodeError::StaticDataInsideFunction { line } => {
+                write!(f, "static data directives are only allowed outside functions (line {line})")
+            },
+            PreDecodeError::InvalidDataDirective { message, line } => {
+                write!(f, "invalid DATA directive: {message} (line {line})")
+            },
+            PreDecodeError::StaticDataByteOutOfRange { token, line } => {
+                write!(f, "DATA byte '{token}' must be in 0..=255 (line {line})")
+            },
         }
     }
 }
@@ -586,6 +622,7 @@ impl ParsedFunction {
     fn into_function(
         self,
         name_to_index: &HashMap<String, usize>,
+        static_data_symbols: &HashMap<String, u64>,
     ) -> Result<Function, PreDecodeError> {
         let ParsedFunction {
             instructions,
@@ -594,7 +631,7 @@ impl ParsedFunction {
         } = self;
         let mut words = Vec::new();
         for instruction in instructions {
-            words.extend(instruction.into_instructions(name_to_index, &labels)?);
+            words.extend(instruction.into_instructions(name_to_index, &labels, static_data_symbols)?);
         }
         Ok(Function::new(words.into_boxed_slice()))
     }
@@ -618,11 +655,12 @@ impl ParsedInstruction {
         self,
         name_to_index: &HashMap<String, usize>,
         labels: &HashMap<String, usize>,
+        static_data_symbols: &HashMap<String, u64>,
     ) -> Result<Vec<Instruction>, PreDecodeError> {
         let mut resolved = [0u64; 2];
         for idx in 0..self.operand_count {
             resolved[idx] =
-                resolve_arg(&self.opcode, &self.args[idx], name_to_index, labels, self.line)?;
+                resolve_arg(&self.opcode, &self.args[idx], name_to_index, labels, static_data_symbols, self.line)?;
         }
         let words = match self.operand_count {
             0 => vec![Instruction::new_1w_op(self.handler)],
@@ -643,6 +681,7 @@ fn resolve_arg(
     arg: &Arg,
     name_to_index: &HashMap<String, usize>,
     labels: &HashMap<String, usize>,
+    static_data_symbols: &HashMap<String, u64>,
     line: usize,
 ) -> Result<u64, PreDecodeError> {
     match arg {
@@ -665,6 +704,8 @@ fn resolve_arg(
                         name: label.clone(),
                         line,
                     })
+            } else if let Some(value) = static_data_symbols.get(label) {
+                Ok(*value)
             } else {
                 Err(PreDecodeError::UnexpectedLabel {
                     opcode: opcode.to_string(),
@@ -697,7 +738,6 @@ fn opcode_table() -> &'static HashMap<&'static str, OpcodeSpec> {
     static OPCODE_TABLE: OnceLock<HashMap<&'static str, OpcodeSpec>> = OnceLock::new();
     OPCODE_TABLE.get_or_init(|| {
         let mut m: HashMap<&'static str, OpcodeSpec> = HashMap::new();
-
         // Control
         m.insert("RET", OpcodeSpec::new(Operations::ret as OpPtr, OPERANDS_NONE));
         m.insert("CALL", OpcodeSpec::new(Operations::call as OpPtr, OPERANDS_TWO_VALUES));
@@ -862,4 +902,250 @@ fn parse_named_constant(token: &str) -> Option<u64> {
         "TIME_NOW" => Some(11),
         _ => None,
     }
+}
+
+fn parse_data_directive(line: &str, line_no: usize) -> Result<(String, Vec<u8>), PreDecodeError> {
+    let trimmed = line.trim();
+    let keyword_len = trimmed
+        .split_whitespace()
+        .next()
+        .map(|s| s.len())
+        .ok_or_else(|| PreDecodeError::InvalidDataDirective {
+            message: "missing DATA keyword".to_string(),
+            line: line_no,
+        })?;
+
+    let mut rest = trimmed[keyword_len..].trim_start();
+    let name = rest
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| PreDecodeError::InvalidDataDirective {
+            message: "missing data symbol name".to_string(),
+            line: line_no,
+        })?
+        .to_string();
+
+    rest = rest[name.len()..].trim_start();
+    if rest.is_empty() {
+        return Err(PreDecodeError::InvalidDataDirective {
+            message: "missing data payload".to_string(),
+            line: line_no,
+        });
+    }
+
+    if rest.starts_with('"') {
+        let (bytes, remaining) = parse_quoted_bytes(rest, line_no)?;
+        if !remaining.trim().is_empty() {
+            return Err(PreDecodeError::InvalidDataDirective {
+                message: "unexpected tokens after quoted string".to_string(),
+                line: line_no,
+            });
+        }
+        return Ok((name, bytes));
+    }
+
+    if rest.len() >= 3 {
+        let lower = rest.to_ascii_lowercase();
+        if lower.starts_with("b64") || lower.starts_with("base64") {
+            let payload_start = if lower.starts_with("base64") { 6 } else { 3 };
+            let mut payload = rest[payload_start..].trim_start();
+            let (encoded, remaining) = if payload.starts_with('"') {
+                let (raw, remain) = parse_quoted_raw(payload, line_no)?;
+                (raw, remain)
+            } else {
+                let token = payload
+                    .split_whitespace()
+                    .next()
+                    .ok_or_else(|| PreDecodeError::InvalidDataDirective {
+                        message: "missing base64 payload".to_string(),
+                        line: line_no,
+                    })?;
+                payload = &payload[token.len()..];
+                (token.to_string(), payload)
+            };
+
+            if !remaining.trim().is_empty() {
+                return Err(PreDecodeError::InvalidDataDirective {
+                    message: "unexpected tokens after base64 payload".to_string(),
+                    line: line_no,
+                });
+            }
+
+            let bytes = decode_base64(&encoded).map_err(|message| PreDecodeError::InvalidDataDirective {
+                message,
+                line: line_no,
+            })?;
+            return Ok((name, bytes));
+        }
+    }
+
+    let mut bytes = Vec::new();
+    for token in rest.split_whitespace() {
+        let value = parse_numeric(token).map_err(|_| PreDecodeError::ParseValue {
+            token: token.to_string(),
+            line: line_no,
+        })?;
+        if value > u8::MAX as u64 {
+            return Err(PreDecodeError::StaticDataByteOutOfRange {
+                token: token.to_string(),
+                line: line_no,
+            });
+        }
+        bytes.push(value as u8);
+    }
+
+    Ok((name, bytes))
+}
+
+fn parse_quoted_bytes(input: &str, line_no: usize) -> Result<(Vec<u8>, &str), PreDecodeError> {
+    let mut chars = input.chars();
+    let Some('"') = chars.next() else {
+        return Err(PreDecodeError::InvalidDataDirective {
+            message: "quoted string must start with \"".to_string(),
+            line: line_no,
+        });
+    };
+
+    let mut bytes = Vec::new();
+    let mut escape = false;
+    let mut consumed = 1usize;
+
+    while let Some(ch) = chars.next() {
+        consumed += ch.len_utf8();
+        if escape {
+            let escaped = match ch {
+                'n' => b'\n',
+                'r' => b'\r',
+                't' => b'\t',
+                '\\' => b'\\',
+                '"' => b'"',
+                'x' => {
+                    let mut hex = String::new();
+                    for _ in 0..2 {
+                        if let Some(h) = chars.next() {
+                            consumed += h.len_utf8();
+                            hex.push(h);
+                        } else {
+                            return Err(PreDecodeError::InvalidDataDirective {
+                                message: "incomplete \\x escape".to_string(),
+                                line: line_no,
+                            });
+                        }
+                    }
+                    let value = u8::from_str_radix(&hex, 16).map_err(|_| PreDecodeError::InvalidDataDirective {
+                        message: format!("invalid \\x escape: {hex}"),
+                        line: line_no,
+                    })?;
+                    bytes.push(value);
+                    escape = false;
+                    continue;
+                }
+                _ => {
+                    return Err(PreDecodeError::InvalidDataDirective {
+                        message: format!("invalid escape sequence \\{ch}"),
+                        line: line_no,
+                    });
+                }
+            };
+            bytes.push(escaped);
+            escape = false;
+            continue;
+        }
+
+        match ch {
+            '\\' => escape = true,
+            '"' => {
+                let remaining = &input[consumed..];
+                return Ok((bytes, remaining));
+            }
+            _ => {
+                let mut buf = [0u8; 4];
+                let s = ch.encode_utf8(&mut buf);
+                bytes.extend(s.as_bytes());
+            }
+        }
+    }
+
+    Err(PreDecodeError::InvalidDataDirective {
+        message: "unterminated quoted string".to_string(),
+        line: line_no,
+    })
+}
+
+fn parse_quoted_raw(input: &str, line_no: usize) -> Result<(String, &str), PreDecodeError> {
+    let mut chars = input.chars();
+    let Some('"') = chars.next() else {
+        return Err(PreDecodeError::InvalidDataDirective {
+            message: "quoted string must start with \"".to_string(),
+            line: line_no,
+        });
+    };
+
+    let mut collected = String::new();
+    let mut consumed = 1usize;
+    while let Some(ch) = chars.next() {
+        consumed += ch.len_utf8();
+        if ch == '"' {
+            let remaining = &input[consumed..];
+            return Ok((collected, remaining));
+        }
+        collected.push(ch);
+    }
+
+    Err(PreDecodeError::InvalidDataDirective {
+        message: "unterminated quoted string".to_string(),
+        line: line_no,
+    })
+}
+
+fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
+    let mut output = Vec::new();
+    let mut buf = [0u8; 4];
+    let mut buf_len = 0usize;
+
+    for ch in input.chars() {
+        if ch.is_whitespace() {
+            continue;
+        }
+        let value = match ch {
+            'A'..='Z' => (ch as u8) - b'A',
+            'a'..='z' => (ch as u8) - b'a' + 26,
+            '0'..='9' => (ch as u8) - b'0' + 52,
+            '+' => 62,
+            '/' => 63,
+            '=' => 64,
+            _ => return Err(format!("invalid base64 character '{ch}'")),
+        };
+        buf[buf_len] = value;
+        buf_len += 1;
+        if buf_len == 4 {
+            if buf[0] == 64 || buf[1] == 64 {
+                return Err("invalid base64 padding".to_string());
+            }
+            let triple = ((buf[0] as u32) << 18) | ((buf[1] as u32) << 12);
+            let triple = triple
+                | if buf[2] != 64 { (buf[2] as u32) << 6 } else { 0 }
+                | if buf[3] != 64 { buf[3] as u32 } else { 0 };
+
+            output.push(((triple >> 16) & 0xFF) as u8);
+            if buf[2] != 64 {
+                output.push(((triple >> 8) & 0xFF) as u8);
+            }
+            if buf[3] != 64 {
+                output.push((triple & 0xFF) as u8);
+            }
+
+            if buf[2] == 64 && buf[3] != 64 {
+                return Err("invalid base64 padding".to_string());
+            }
+
+            buf_len = 0;
+        }
+    }
+
+    if buf_len != 0 {
+        return Err("invalid base64 length".to_string());
+    }
+
+    Ok(output)
 }
